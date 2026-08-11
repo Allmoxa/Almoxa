@@ -1,24 +1,95 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Almoxá — estoque por foto ou nota de compra" },
+      {
+        name: "description",
+        content:
+          "Controle entrada e saída de produtos sem digitar: fotografe o item ou importe a nota de compra e o estoque se preenche.",
+      },
+      { property: "og:title", content: "Almoxá — estoque por foto ou nota de compra" },
+      {
+        property: "og:description",
+        content:
+          "Controle entrada e saída de produtos sem digitar: fotografe o item ou importe a nota de compra e o estoque se preenche.",
+      },
+    ],
+  }),
+  component: Landing,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+const steps = [
+  {
+    label: "01",
+    title: "Fotografe",
+    text: "Aponte a câmera para o produto ou a etiqueta. A leitura identifica nome, código e quantidade.",
+  },
+  {
+    label: "02",
+    title: "Ou importe a nota",
+    text: "Envie a nota fiscal, o pedido ou o recibo em PDF. Todos os itens da compra entram juntos.",
+  },
+  {
+    label: "03",
+    title: "Confira e confirme",
+    text: "Ajuste preço de compra e de venda se quiser. O estoque e o lucro se atualizam na hora.",
+  },
+];
+
+function Landing() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/estoque" });
+    });
+  }, [navigate]);
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="min-h-screen bg-background">
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+        <span className="font-display text-xl">Almoxá</span>
+        <Link to="/auth" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+          Entrar
+        </Link>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-6">
+        <section className="border-b border-border py-24">
+          <p className="label-caps">Controle de entrada e saída</p>
+          <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
+            Seu estoque atualizado com uma foto.
+          </h1>
+          <p className="mt-6 max-w-xl text-base text-muted-foreground">
+            Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código, quantidade e preços
+            entram sozinhos — e o lucro de cada item aparece calculado.
+          </p>
+          <Link
+            to="/auth"
+            className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Começar agora
+          </Link>
+        </section>
+
+        <section className="grid gap-px bg-border sm:grid-cols-3">
+          {steps.map((step) => (
+            <article key={step.label} className="bg-background px-6 py-12 sm:px-8">
+              <p className="font-mono text-xs text-accent">{step.label}</p>
+              <h2 className="mt-4 text-2xl">{step.title}</h2>
+              <p className="mt-3 text-sm text-muted-foreground">{step.text}</p>
+            </article>
+          ))}
+        </section>
+
+        <footer className="rule-top mt-px py-10 text-sm text-muted-foreground">
+          Almoxá — controle de estoque simples para quem compra e revende.
+        </footer>
+      </main>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
+import { Route as AuthenticatedMovimentacoesRouteImport } from './routes/_authenticated/movimentacoes'
 import { Route as AuthenticatedReceberRouteImport } from './routes/_authenticated/receber'
 
 const IndexRoute = IndexRouteImport.update({
@@ -34,6 +35,12 @@ const AuthenticatedEstoqueRoute = AuthenticatedEstoqueRouteImport.update({
   path: '/estoque',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMovimentacoesRoute =
+  AuthenticatedMovimentacoesRouteImport.update({
+    id: '/movimentacoes',
+    path: '/movimentacoes',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReceberRoute = AuthenticatedReceberRouteImport.update({
   id: '/receber',
   path: '/receber',
@@ -44,12 +51,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
+  '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/receber': typeof AuthenticatedReceberRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
+  '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/receber': typeof AuthenticatedReceberRoute
 }
 export interface FileRoutesById {
@@ -58,19 +67,21 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
+  '/_authenticated/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/_authenticated/receber': typeof AuthenticatedReceberRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/estoque' | '/receber'
+  fullPaths: '/' | '/auth' | '/estoque' | '/movimentacoes' | '/receber'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/estoque' | '/receber'
+  to: '/' | '/auth' | '/estoque' | '/movimentacoes' | '/receber'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/estoque'
+    | '/_authenticated/movimentacoes'
     | '/_authenticated/receber'
   fileRoutesById: FileRoutesById
 }
@@ -110,6 +121,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstoqueRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/movimentacoes': {
+      id: '/_authenticated/movimentacoes'
+      path: '/movimentacoes'
+      fullPath: '/movimentacoes'
+      preLoaderRoute: typeof AuthenticatedMovimentacoesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/receber': {
       id: '/_authenticated/receber'
       path: '/receber'
@@ -122,11 +140,13 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
+  AuthenticatedMovimentacoesRoute: typeof AuthenticatedMovimentacoesRoute
   AuthenticatedReceberRoute: typeof AuthenticatedReceberRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
+  AuthenticatedMovimentacoesRoute: AuthenticatedMovimentacoesRoute,
   AuthenticatedReceberRoute: AuthenticatedReceberRoute,
 }
 
