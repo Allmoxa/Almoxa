@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Almoxá">
+  <rect width="32" height="32" rx="5.76" fill="#111110"/>
+  <g stroke="#fbfaf7" stroke-width="3.58" stroke-linecap="round" fill="none">
+    <path d="M 8.48 24.16 L 16.00 7.84 L 23.52 24.16"/>
+    <path d="M 10.74 19.26 L 21.26 19.26" stroke-width="2.94"/>
+  </g>
+</svg>
