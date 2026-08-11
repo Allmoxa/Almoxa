@@ -21,9 +21,23 @@ npm run dev
 ## 🛠️ Stack
 
 - **Frontend/Fullstack**: TanStack Start (React 19) + Vite + Tailwind CSS v4
-- **Backend**: Lovable Cloud (banco de dados, storage e autenticação)
-- **Leitura por IA**: Google Gemini via Lovable AI Gateway
+- **Backend**: Supabase (banco de dados, storage e autenticação)
+- **Leitura por IA**: Google Gemini (API direta)
+- **Deploy**: Vercel
 - **Estética**: papel claro, tipografia Instrument Serif + DM Sans, minimalismo
+
+## 🔧 Variáveis de ambiente
+
+Copie `.env` e preencha com as credenciais do seu próprio projeto Supabase e sua chave do Gemini:
+
+```
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+```
 
 ## 📁 Estrutura
 
