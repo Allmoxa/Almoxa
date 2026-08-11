@@ -65,7 +65,7 @@ export const extractProducts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
   .handler(async ({ data }): Promise<{ items: ExtractedItem[] }> => {
-    const apiKey = process.env["LOVABLE_API_KEY"];
+    const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Serviço de leitura indisponível.");
 
     const instruction =
@@ -85,14 +85,14 @@ export const extractProducts = createServerFn({ method: "POST" })
       }
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content },
@@ -104,9 +104,9 @@ export const extractProducts = createServerFn({ method: "POST" })
 
     if (!response.ok) {
       const detail = await response.text();
-      console.error("AI gateway error", response.status, detail);
+      console.error("Gemini API error", response.status, detail);
       if (response.status === 429) throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
-      if (response.status === 402) throw new Error("Os créditos de IA do projeto acabaram.");
+      if (response.status === 403) throw new Error("Chave da API do Gemini inválida ou sem permissão.");
       throw new Error("Não consegui ler este arquivo. Tente uma foto mais nítida.");
     }
 
