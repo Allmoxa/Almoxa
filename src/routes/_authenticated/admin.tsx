@@ -47,6 +47,7 @@ const sourceLabel: Record<Movement["source"], string> = {
   manual: "Manual",
   photo: "Foto",
   document: "Documento",
+  adjustment: "Ajuste",
 };
 
 function AdminPage() {

@@ -4,9 +4,21 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
+import { ProductEditDialog, type ProductEditValues } from "@/components/product-edit-dialog";
+import { ProductMovementDialog, type MovementValues } from "@/components/product-movement-dialog";
+import { ProductProfitDialog } from "@/components/product-profit-dialog";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
-import { currency, qty, slugSku, type Product } from "@/lib/inventory";
+import {
+  currency,
+  noProfit,
+  profitByProduct,
+  profitSummary,
+  qty,
+  slugSku,
+  type Product,
+  type Sale,
+} from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({
@@ -39,6 +51,8 @@ function EstoquePage() {
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [moving, setMoving] = useState<{ product: Product; kind: "in" | "out" } | null>(null);
+  const [editing, setEditing] = useState<Product | null>(null);
+  const [profiting, setProfiting] = useState<Product | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -49,6 +63,20 @@ function EstoquePage() {
         .order("name");
       if (error) throw error;
       return data as Product[];
+    },
+  });
+
+  const { data: sales = [] } = useQuery({
+    queryKey: ["sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("movements")
+        .select("product_id, quantity, unit_price, unit_cost, created_at")
+        .eq("kind", "out")
+        .neq("source", "adjustment")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as Sale[];
     },
   });
 
@@ -117,13 +145,55 @@ function EstoquePage() {
       });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Movimentação registrada");
+    onSuccess: (_data, variables) => {
+      toast.success(variables.kind === "out" ? "Venda registrada" : "Entrada registrada");
       setMoving(null);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["movements"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao registrar"),
+  });
+
+  const updateProduct = useMutation({
+    mutationFn: async ({ product, values }: { product: Product; values: ProductEditValues }) => {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) throw new Error("Sessão expirada");
+
+      if (values.purchase_price !== product.purchase_price || values.sale_price !== product.sale_price) {
+        const { error } = await supabase
+          .from("products")
+          .update({ purchase_price: values.purchase_price, sale_price: values.sale_price })
+          .eq("id", product.id);
+        if (error) throw error;
+      }
+
+      // A quantidade vive dos movimentos: mexer nela direto na tabela deixaria o
+      // histórico sem explicação para a diferença.
+      const delta = values.quantity - product.quantity;
+      if (delta !== 0) {
+        const { error } = await supabase.from("movements").insert({
+          user_id: userId,
+          product_id: product.id,
+          kind: delta > 0 ? "in" : "out",
+          quantity: Math.abs(delta),
+          unit_price: delta > 0 ? values.purchase_price : 0,
+          unit_cost: values.purchase_price,
+          source: "adjustment",
+          note: "Ajuste manual de estoque",
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Produto atualizado");
+      setEditing(null);
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["movements"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao atualizar"),
   });
 
   const removeProduct = useMutation({
@@ -134,6 +204,8 @@ function EstoquePage() {
     onSuccess: () => {
       toast.success("Produto removido");
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["movements"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
     },
     onError: () => toast.error("Erro ao remover"),
   });
@@ -151,6 +223,9 @@ function EstoquePage() {
     return { cost, revenue, profit: revenue - cost, units };
   }, [products]);
 
+  const realized = useMemo(() => profitSummary(sales), [sales]);
+  const profitPerProduct = useMemo(() => profitByProduct(sales), [sales]);
+
   return (
     <AppShell
       title="Estoque"
@@ -164,7 +239,28 @@ function EstoquePage() {
         </button>
       }
     >
-      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+        {[
+          { label: "Lucro hoje", value: realized.today, units: realized.unitsToday, hint: "desde a meia-noite" },
+          { label: "Lucro na semana", value: realized.week, units: realized.unitsWeek, hint: "últimos 7 dias" },
+        ].map((item) => (
+          <div key={item.label} className="bg-card px-5 py-5">
+            <p className="label-caps">{item.label}</p>
+            <p
+              className={`mt-2 font-display text-3xl tabular-nums ${
+                item.value < 0 ? "text-destructive" : "text-success"
+              }`}
+            >
+              {currency(item.value)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {qty(item.units)} un. vendidas — {item.hint}
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <section className="mt-4 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
         {[
           { label: "Unidades", value: qty(totals.units) },
           { label: "Custo em estoque", value: currency(totals.cost) },
@@ -316,7 +412,19 @@ function EstoquePage() {
                           onClick={() => setMoving({ product, kind: "out" })}
                           className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
                         >
-                          Saída
+                          Vender
+                        </button>
+                        <button
+                          onClick={() => setProfiting(product)}
+                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                        >
+                          Lucros
+                        </button>
+                        <button
+                          onClick={() => setEditing(product)}
+                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                        >
+                          Editar
                         </button>
                         <button
                           onClick={() => {
@@ -337,74 +445,39 @@ function EstoquePage() {
       </div>
 
       {moving ? (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/25 px-6">
-          <form
-            className="paper-panel w-full max-w-sm p-6"
-            style={{ boxShadow: "var(--shadow-lift)" }}
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              const quantity = Number(form.get("quantity"));
-              const unit_price = Number(form.get("unit_price"));
-              if (!Number.isFinite(quantity) || quantity <= 0) {
-                toast.error("Quantidade inválida");
-                return;
-              }
-              registerMovement.mutate({ product: moving.product, kind: moving.kind, quantity, unit_price });
-            }}
-          >
-            <p className="label-caps">{moving.kind === "in" ? "Entrada" : "Saída"}</p>
-            <h2 className="mt-2 text-2xl">{moving.product.name}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Em estoque: {qty(moving.product.quantity)}</p>
+        <ProductMovementDialog
+          key={`${moving.product.id}-${moving.kind}`}
+          product={moving.product}
+          kind={moving.kind}
+          pending={registerMovement.isPending}
+          onCancel={() => setMoving(null)}
+          onSubmit={(values: MovementValues) =>
+            registerMovement.mutate({
+              product: moving.product,
+              kind: moving.kind,
+              quantity: values.quantity,
+              unit_price: values.unit_price,
+            })
+          }
+        />
+      ) : null}
 
-            <div className="mt-5 space-y-4">
-              <div>
-                <label className="label-caps" htmlFor="mv-quantity">
-                  Quantidade
-                </label>
-                <input
-                  id="mv-quantity"
-                  name="quantity"
-                  type="number"
-                  step="1"
-                  defaultValue="1"
-                  autoFocus
-                  className={`mt-2 ${inputClass}`}
-                />
-              </div>
-              <div>
-                <label className="label-caps" htmlFor="mv-price">
-                  Preço unitário
-                </label>
-                <input
-                  id="mv-price"
-                  name="unit_price"
-                  type="number"
-                  step="0.01"
-                  defaultValue={moving.kind === "in" ? moving.product.purchase_price : moving.product.sale_price}
-                  className={`mt-2 ${inputClass}`}
-                />
-              </div>
-            </div>
+      {editing ? (
+        <ProductEditDialog
+          key={editing.id}
+          product={editing}
+          pending={updateProduct.isPending}
+          onCancel={() => setEditing(null)}
+          onSubmit={(values) => updateProduct.mutate({ product: editing, values })}
+        />
+      ) : null}
 
-            <div className="mt-6 flex gap-2">
-              <button
-                type="submit"
-                disabled={registerMovement.isPending}
-                className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                Confirmar
-              </button>
-              <button
-                type="button"
-                onClick={() => setMoving(null)}
-                className="rounded-md border border-border-strong px-4 py-2 text-sm transition-colors hover:bg-secondary"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </div>
+      {profiting ? (
+        <ProductProfitDialog
+          product={profiting}
+          summary={profitPerProduct.get(profiting.id) ?? noProfit()}
+          onClose={() => setProfiting(null)}
+        />
       ) : null}
     </AppShell>
   );

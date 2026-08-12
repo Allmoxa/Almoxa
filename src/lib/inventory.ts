@@ -35,8 +35,123 @@ export type Movement = {
   kind: "in" | "out";
   quantity: number;
   unit_price: number;
-  source: "manual" | "photo" | "document";
+  unit_cost: number;
+  source: "manual" | "photo" | "document" | "adjustment";
   note: string | null;
   created_at: string;
   products?: { name: string; sku: string } | null;
 };
+
+/** Saída registrada como venda — ajustes de estoque ficam de fora. */
+export type Sale = Pick<Movement, "product_id" | "quantity" | "unit_price" | "unit_cost" | "created_at">;
+
+export type ProfitSummary = {
+  today: number;
+  week: number;
+  total: number;
+  unitsToday: number;
+  unitsWeek: number;
+  unitsTotal: number;
+};
+
+const emptyProfit: ProfitSummary = {
+  today: 0,
+  week: 0,
+  total: 0,
+  unitsToday: 0,
+  unitsWeek: 0,
+  unitsTotal: 0,
+};
+
+export const saleProfit = (sale: Sale) => (sale.unit_price - sale.unit_cost) * sale.quantity;
+
+/** Hoje começa à meia-noite local; a semana é a janela dos últimos 7 dias, hoje incluído. */
+export const profitBoundaries = (now: Date = new Date()) => {
+  const dayStart = new Date(now);
+  dayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date(dayStart);
+  weekStart.setDate(weekStart.getDate() - 6);
+  return { dayStart: dayStart.getTime(), weekStart: weekStart.getTime() };
+};
+
+export function profitSummary(sales: Sale[], now: Date = new Date()): ProfitSummary {
+  const { dayStart, weekStart } = profitBoundaries(now);
+  return sales.reduce<ProfitSummary>(
+    (acc, sale) => {
+      const profit = saleProfit(sale);
+      const at = new Date(sale.created_at).getTime();
+      acc.total += profit;
+      acc.unitsTotal += sale.quantity;
+      if (at >= weekStart) {
+        acc.week += profit;
+        acc.unitsWeek += sale.quantity;
+      }
+      if (at >= dayStart) {
+        acc.today += profit;
+        acc.unitsToday += sale.quantity;
+      }
+      return acc;
+    },
+    { ...emptyProfit },
+  );
+}
+
+export function profitByProduct(sales: Sale[], now: Date = new Date()): Map<string, ProfitSummary> {
+  const grouped = new Map<string, Sale[]>();
+  for (const sale of sales) {
+    const list = grouped.get(sale.product_id);
+    if (list) list.push(sale);
+    else grouped.set(sale.product_id, [sale]);
+  }
+  return new Map([...grouped].map(([productId, list]) => [productId, profitSummary(list, now)]));
+}
+
+export const noProfit = (): ProfitSummary => ({ ...emptyProfit });
+
+/** Linha de uma venda em lote: o que saiu e quanto essa saída valeria pela tabela. */
+export type SplitLine = {
+  quantity: number;
+  /** Preço de tabela usado como peso do rateio. Zero = sem referência. */
+  reference: number;
+};
+
+/** Peso do produto no rateio: o preço de tabela, ou o custo quando não há preço de venda. */
+export const splitReference = (product?: Pick<Product, "sale_price" | "purchase_price"> | null) =>
+  product ? (product.sale_price > 0 ? product.sale_price : product.purchase_price) : 0;
+
+/**
+ * Divide o valor total de uma venda entre as linhas e devolve o valor unitário de cada uma.
+ *
+ * O peso é quanto a linha valeria pela tabela (preço de venda × quantidade), de modo que
+ * um desconto no total cai proporcionalmente sobre os itens mais caros. Sem preço de
+ * tabela em nenhuma linha, o rateio passa a ser por unidade — 5 calças por R$ 20 saem a
+ * R$ 4,00 cada. A conta roda em centavos e a sobra da divisão vai para as linhas de maior
+ * peso, então a soma das linhas bate exatamente com o total informado.
+ */
+export function splitSaleTotal(lines: SplitLine[], total: number): number[] {
+  const entries = lines.map((line) => ({
+    quantity: Math.max(0, line.quantity),
+    reference: Math.max(0, line.reference),
+  }));
+  const unitSum = entries.reduce((sum, entry) => sum + entry.quantity, 0);
+  if (unitSum <= 0) return lines.map(() => 0);
+
+  const weightSum = entries.reduce((sum, entry) => sum + entry.quantity * entry.reference, 0);
+  const base = entries.map((entry) => (weightSum > 0 ? entry.quantity * entry.reference : entry.quantity));
+  const baseSum = weightSum > 0 ? weightSum : unitSum;
+
+  const totalCents = Math.max(0, Math.round(total * 100));
+  const cents = base.map((weight) => Math.floor((totalCents * weight) / baseSum));
+
+  const heaviest = base.map((weight, index) => ({ weight, index })).sort((a, b) => b.weight - a.weight);
+  let rest = totalCents - cents.reduce((sum, c) => sum + c, 0);
+  for (let k = 0; rest > 0; k += 1, rest -= 1) {
+    const target = heaviest[k % heaviest.length];
+    if (!target) break;
+    cents[target.index] = (cents[target.index] ?? 0) + 1;
+  }
+
+  return entries.map((entry, index) =>
+    entry.quantity > 0 ? Number(((cents[index] ?? 0) / 100 / entry.quantity).toFixed(6)) : 0,
+  );
+}

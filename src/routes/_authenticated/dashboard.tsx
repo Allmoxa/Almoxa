@@ -41,7 +41,7 @@ function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("movements")
-        .select("id, product_id, kind, quantity, unit_price, source, note, created_at, products(name, sku)")
+        .select("id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, products(name, sku)")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
@@ -134,7 +134,8 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
 
     const totalInvested = products.reduce((sum, p) => sum + p.purchase_price * p.quantity, 0);
 
-    const outMovements = movements.filter((m) => m.kind === "out");
+    // Ajuste de estoque é saída sem venda: entra no histórico, mas não em ticket nem lucro.
+    const outMovements = movements.filter((m) => m.kind === "out" && m.source !== "adjustment");
     const avgTicket = outMovements.length
       ? outMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) / outMovements.length
       : 0;
@@ -151,7 +152,8 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
       const name = m.products?.name ?? product?.name ?? "—";
       const entry = soldByProduct.get(m.product_id) ?? { name, qty: 0, profit: 0 };
       entry.qty += m.quantity;
-      entry.profit += (m.unit_price - (product?.purchase_price ?? 0)) * m.quantity;
+      // O custo é o congelado na venda: mudar o preço de compra hoje não reescreve o passado.
+      entry.profit += (m.unit_price - (m.unit_cost || product?.purchase_price || 0)) * m.quantity;
       soldByProduct.set(m.product_id, entry);
     }
     const topSellers = [...soldByProduct.values()]
