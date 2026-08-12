@@ -174,3 +174,108 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-paper);
 }
+
+@keyframes box-spin {
+  from {
+    transform: rotateX(-28deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-28deg) rotateY(360deg);
+  }
+}
+
+@utility animate-box-spin {
+  animation: box-spin 2.4s linear infinite;
+}
+
+@keyframes step-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-step-fade {
+  animation: step-fade 0.5s ease-out;
+}
+
+/*
+ * Tema do Dashboard — paleta "Claude Renk Paleti v1.0" (tweakcn).
+ * Escopado em .theme-dashboard pra não afetar o resto do app.
+ */
+.theme-dashboard {
+  --background: #faf9f5;
+  --foreground: #3d3929;
+  --card: #ffffff;
+  --card-foreground: #141413;
+  --popover: #ffffff;
+  --popover-foreground: #28261b;
+  --primary: #c96442;
+  --primary-foreground: #ffffff;
+  --secondary: #e9e6dc;
+  --secondary-foreground: #535146;
+  --muted: #ede9de;
+  --muted-foreground: #83827d;
+  --accent: #e9e6dc;
+  --accent-foreground: #28261b;
+  --destructive: #b4552d;
+  --destructive-foreground: #ffffff;
+  --success: #5f7a52;
+  --success-foreground: #ffffff;
+  --border: #dad9d4;
+  --border-strong: #b4b2a7;
+  --input: #b4b2a7;
+  --ring: #c96442;
+  --chart-1: #c96442;
+  --chart-2: #9c87f5;
+  --chart-3: #b05730;
+  --chart-4: #dbd3f0;
+  --chart-5: #b4552d;
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@utility animate-card-rise {
+  animation: card-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@utility animate-bar-grow {
+  transform-origin: left;
+  animation: bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--destructive) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in oklch, var(--destructive) 0%, transparent);
+  }
+}
+
+@utility animate-soft-pulse {
+  animation: soft-pulse 2.4s ease-out infinite;
+}
