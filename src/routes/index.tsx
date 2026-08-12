@@ -60,24 +60,26 @@ function Landing() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6">
-        <section className="border-b border-border py-24">
-          <p className="label-caps">Controle de entrada e saída</p>
-          <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
-            Seu estoque atualizado com uma foto.
-          </h1>
-          <p className="mt-6 max-w-xl text-base text-muted-foreground">
-            Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código, quantidade e preços
-            entram sozinhos — e o lucro de cada item aparece calculado.
-          </p>
-          <Link
-            to="/auth"
-            className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-          >
-            Entrar na conta
-          </Link>
-        </section>
+        <section className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]">
+          <div>
+            <p className="label-caps">Controle de entrada e saída</p>
+            <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
+              Seu estoque atualizado com uma foto.
+            </h1>
+            <p className="mt-6 max-w-xl text-base text-muted-foreground">
+              Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código, quantidade e
+              preços entram sozinhos — e o lucro de cada item aparece calculado.
+            </p>
+            <Link
+              to="/auth"
+              className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Entrar na conta
+            </Link>
+          </div>
 
-        <StepsCube steps={steps} />
+          <StepsCube steps={steps} />
+        </section>
 
         <footer className="rule-top mt-px py-10 text-sm text-muted-foreground">
           Almoxá — controle de estoque simples para quem compra e revende.

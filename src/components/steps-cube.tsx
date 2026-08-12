@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type CSSProperties } from "react";
 
 type Step = {
@@ -11,6 +12,8 @@ const SIZE = 340;
 const HALF = SIZE / 2;
 const INTERVAL_MS = 4200;
 const TILT = -14;
+const OPEN_TILT = -66;
+const OPEN_DURATION_MS = 750;
 
 const CARDBOARD = "#C19A6C";
 const CARDBOARD_LIGHT = "#D8B78C";
@@ -26,24 +29,45 @@ const corrugation: CSSProperties = {
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
+  const [opening, setOpening] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    if (opening) return;
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % steps.length);
     }, INTERVAL_MS);
     return () => clearInterval(id);
-  }, [steps.length]);
+  }, [steps.length, opening]);
+
+  const handleTest = () => {
+    if (opening) return;
+    setOpening(true);
+    window.setTimeout(() => {
+      navigate({ to: "/auth" });
+    }, OPEN_DURATION_MS);
+  };
 
   return (
-    <section className="border-b border-border py-24">
-      <div className="mx-auto" style={{ perspective: 1400, width: SIZE, height: SIZE + 40 }}>
+    <div>
+      <div className="relative mx-auto" style={{ perspective: 1400, width: SIZE, height: SIZE + 40 }}>
         <div
-          className="relative transition-transform duration-700 ease-in-out"
+          className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
+          style={{
+            opacity: opening ? 1 : 0,
+            background: "radial-gradient(circle at 50% 12%, rgba(255,250,235,0.95), transparent 62%)",
+          }}
+        />
+        <div
+          className="relative transition-all duration-700 ease-in-out"
           style={{
             width: SIZE,
             height: SIZE,
             transformStyle: "preserve-3d",
-            transform: `rotateX(${TILT}deg) rotateY(${index * -90}deg)`,
+            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
+              opening ? 1.16 : 1
+            })`,
+            opacity: opening ? 0.4 : 1,
           }}
         >
           {steps.map((step, i) => (
@@ -73,6 +97,17 @@ export function StepsCube({ steps }: { steps: Step[] }) {
               <p className="relative max-w-sm text-sm" style={{ color: INK_SOFT }}>
                 {step.text}
               </p>
+
+              {i === steps.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleTest}
+                  className="relative mt-2 inline-flex w-fit items-center gap-2 rounded-sm border-2 px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                  style={{ borderColor: INK, color: INK, backgroundColor: TAPE }}
+                >
+                  Testar →
+                </button>
+              ) : null}
             </article>
           ))}
 
@@ -136,18 +171,19 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         </div>
       </div>
 
-      <div className="mt-10 flex justify-center gap-2">
+      <div className="mt-10 flex justify-center gap-2 transition-opacity duration-500" style={{ opacity: opening ? 0 : 1 }}>
         {steps.map((step, i) => (
           <button
             key={step.label}
             type="button"
             aria-label={`Ver passo ${step.label}`}
             onClick={() => setIndex(i)}
+            disabled={opening}
             className="h-1.5 w-6 rounded-full transition-colors"
             style={{ backgroundColor: i === index ? CARDBOARD : undefined }}
           />
         ))}
       </div>
-    </section>
+    </div>
   );
 }
