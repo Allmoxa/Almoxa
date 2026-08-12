@@ -58,16 +58,18 @@ export function StepsCube({ steps }: { steps: Step[] }) {
                 transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF}px)`,
               }}
             >
-              <span
-                className="absolute left-0 top-14 h-6 w-full -rotate-1 opacity-90"
-                style={{ backgroundColor: TAPE }}
-              />
               <p className="relative font-mono text-xs font-semibold tracking-widest" style={{ color: INK }}>
                 {step.label}
               </p>
-              <h2 className="relative text-3xl" style={{ color: INK }}>
-                {step.title}
-              </h2>
+              <div className="relative -mx-3 py-2">
+                <span
+                  className="absolute inset-y-0 left-0 -z-10 w-[calc(100%+1.5rem)] -rotate-1 opacity-95 shadow-sm"
+                  style={{ backgroundColor: TAPE }}
+                />
+                <h2 className="px-3 text-3xl" style={{ color: INK }}>
+                  {step.title}
+                </h2>
+              </div>
               <p className="relative max-w-sm text-sm" style={{ color: INK_SOFT }}>
                 {step.text}
               </p>
