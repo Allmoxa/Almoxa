@@ -4,6 +4,7 @@ import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/estoque", label: "Estoque" },
   { to: "/receber", label: "Receber" },
   { to: "/movimentacoes", label: "Movimentações" },
