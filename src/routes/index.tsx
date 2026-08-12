@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { StepsCube } from "@/components/steps-cube";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -76,15 +77,7 @@ function Landing() {
           </Link>
         </section>
 
-        <section className="grid gap-px bg-border sm:grid-cols-3">
-          {steps.map((step) => (
-            <article key={step.label} className="bg-background px-6 py-12 sm:px-8">
-              <p className="font-mono text-xs text-accent">{step.label}</p>
-              <h2 className="mt-4 text-2xl">{step.title}</h2>
-              <p className="mt-3 text-sm text-muted-foreground">{step.text}</p>
-            </article>
-          ))}
-        </section>
+        <StepsCube steps={steps} />
 
         <footer className="rule-top mt-px py-10 text-sm text-muted-foreground">
           Almoxá — controle de estoque simples para quem compra e revende.

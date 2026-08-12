@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { extractProducts, type ExtractedItem } from "@/lib/intake.functions";
 import { currency, slugSku } from "@/lib/inventory";
@@ -188,7 +189,10 @@ function ReceberPage() {
       </div>
 
       {read.isPending ? (
-        <p className="mt-8 text-center text-sm text-muted-foreground">Lendo o material…</p>
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <BoxSpinner size={32} />
+          <p className="text-center text-sm text-muted-foreground">Lendo o material…</p>
+        </div>
       ) : null}
 
       {items ? (

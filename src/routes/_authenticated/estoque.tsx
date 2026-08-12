@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
+import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, qty, slugSku, type Product } from "@/lib/inventory";
 
@@ -266,7 +267,10 @@ function EstoquePage() {
 
       <div className="paper-panel mt-4 overflow-hidden">
         {isLoading ? (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">Carregando…</p>
+          <div className="flex flex-col items-center gap-3 px-5 py-10">
+            <BoxSpinner />
+            <p className="text-center text-sm text-muted-foreground">Carregando…</p>
+          </div>
         ) : filtered.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
             Nada aqui ainda. Cadastre manualmente ou use a tela Receber para ler uma foto ou nota.
