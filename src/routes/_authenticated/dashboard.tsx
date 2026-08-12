@@ -41,7 +41,7 @@ function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("movements")
-        .select("id, product_id, kind, quantity, unit_price, source, note, created_at, products(name, sku)")
+        .select("id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, products(name, sku)")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
@@ -70,12 +70,14 @@ function DashboardPage() {
                 label="Produtos com estoque baixo"
                 value={stats.lowStock.length}
                 warn={stats.lowStock.length > 0}
+                targetId="lista-estoque-baixo"
               />
               <StatCard
                 delay={240}
                 label="Produtos parados"
                 value={stats.stalled.length}
                 warn={stats.stalled.length > 0}
+                targetId="lista-produtos-parados"
               />
             </div>
 
@@ -94,7 +96,7 @@ function DashboardPage() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <ListCard delay={560} title="Estoque baixo" empty="Nenhum produto abaixo do mínimo.">
+              <ListCard id="lista-estoque-baixo" delay={560} title="Estoque baixo" empty="Nenhum produto abaixo do mínimo.">
                 {stats.lowStock.map((p, i) => (
                   <ListRow key={p.id} delay={i * 60}>
                     <span className="truncate">{p.name}</span>
@@ -103,7 +105,12 @@ function DashboardPage() {
                 ))}
               </ListCard>
 
-              <ListCard delay={640} title="Produtos parados" empty={`Tudo girando nos últimos ${STALLED_DAYS} dias.`}>
+              <ListCard
+                id="lista-produtos-parados"
+                delay={640}
+                title="Produtos parados"
+                empty={`Tudo girando nos últimos ${STALLED_DAYS} dias.`}
+              >
                 {stats.stalled.map((p, i) => (
                   <ListRow key={p.id} delay={i * 60}>
                     <span className="truncate">{p.name}</span>
@@ -127,7 +134,8 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
 
     const totalInvested = products.reduce((sum, p) => sum + p.purchase_price * p.quantity, 0);
 
-    const outMovements = movements.filter((m) => m.kind === "out");
+    // Ajuste de estoque é saída sem venda: entra no histórico, mas não em ticket nem lucro.
+    const outMovements = movements.filter((m) => m.kind === "out" && m.source !== "adjustment");
     const avgTicket = outMovements.length
       ? outMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) / outMovements.length
       : 0;
@@ -144,7 +152,8 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
       const name = m.products?.name ?? product?.name ?? "—";
       const entry = soldByProduct.get(m.product_id) ?? { name, qty: 0, profit: 0 };
       entry.qty += m.quantity;
-      entry.profit += (m.unit_price - (product?.purchase_price ?? 0)) * m.quantity;
+      // O custo é o congelado na venda: mudar o preço de compra hoje não reescreve o passado.
+      entry.profit += (m.unit_price - (m.unit_cost || product?.purchase_price || 0)) * m.quantity;
       soldByProduct.set(m.product_id, entry);
     }
     const topSellers = [...soldByProduct.values()]
@@ -189,30 +198,55 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
   }, [products, movements]);
 }
 
+function scrollToTarget(targetId: string) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+  window.setTimeout(() => {
+    el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+  }, 1400);
+}
+
 function StatCard({
   label,
   value,
   format = (n: number) => Math.round(n).toString(),
   delay = 0,
   warn = false,
+  targetId,
 }: {
   label: string;
   value: number;
   format?: (n: number) => string;
   delay?: number;
   warn?: boolean;
+  targetId?: string;
 }) {
+  const clickable = !!targetId && value > 0;
+
   return (
     <div
-      className={`paper-panel animate-card-rise p-5 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg ${
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? () => scrollToTarget(targetId) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") scrollToTarget(targetId);
+            }
+          : undefined
+      }
+      className={`paper-panel animate-card-rise w-full p-5 text-left transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg ${
         warn ? "animate-soft-pulse border-destructive/50" : ""
-      }`}
+      } ${clickable ? "cursor-pointer" : ""}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <p className="label-caps">{label}</p>
       <p className="mt-3 font-display text-3xl">
         <AnimatedNumber value={value} format={format} />
       </p>
+      {clickable ? <p className="mt-1 text-xs text-muted-foreground">Ver quais →</p> : null}
     </div>
   );
 }
@@ -241,11 +275,13 @@ function ChartCard({
 }
 
 function ListCard({
+  id,
   title,
   empty,
   delay = 0,
   children,
 }: {
+  id?: string;
   title: string;
   empty: string;
   delay?: number;
@@ -253,7 +289,8 @@ function ListCard({
 }) {
   return (
     <div
-      className="paper-panel animate-card-rise p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg"
+      id={id}
+      className="paper-panel animate-card-rise scroll-mt-24 p-6 transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg"
       style={{ animationDelay: `${delay}ms` }}
     >
       <h3 className="font-display text-lg">{title}</h3>
