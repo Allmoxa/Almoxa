@@ -1,15 +1,17 @@
 import { cn } from "@/lib/utils";
 
+const CARDBOARD = "#C19A6C";
+
 const FACES = [
-  "rotateY(0deg)",
-  "rotateY(90deg)",
-  "rotateY(180deg)",
-  "rotateY(-90deg)",
-  "rotateX(90deg)",
-  "rotateX(-90deg)",
+  { transform: "rotateY(0deg)", tone: CARDBOARD },
+  { transform: "rotateY(90deg)", tone: "#A9825A" },
+  { transform: "rotateY(180deg)", tone: CARDBOARD },
+  { transform: "rotateY(-90deg)", tone: "#A9825A" },
+  { transform: "rotateX(90deg)", tone: "#D4B285" },
+  { transform: "rotateX(-90deg)", tone: "#8F6E4A" },
 ];
 
-export function BoxSpinner({ size = 22, className }: { size?: number; className?: string }) {
+export function BoxSpinner({ size = 36, className }: { size?: number; className?: string }) {
   const half = size / 2;
 
   return (
@@ -17,7 +19,7 @@ export function BoxSpinner({ size = 22, className }: { size?: number; className?
       role="status"
       aria-label="Carregando"
       className={cn("inline-block align-middle", className)}
-      style={{ width: size, height: size, perspective: size * 6 }}
+      style={{ width: size, height: size, perspective: size * 5 }}
     >
       <span
         className="relative block h-full w-full animate-box-spin"
@@ -26,11 +28,12 @@ export function BoxSpinner({ size = 22, className }: { size?: number; className?
         {FACES.map((face, i) => (
           <span
             key={i}
-            className="absolute border border-primary/60 bg-accent/25"
+            className="absolute border-2 border-primary/70 shadow-sm"
             style={{
               width: size,
               height: size,
-              transform: `${face} translateZ(${half}px)`,
+              backgroundColor: face.tone,
+              transform: `${face.transform} translateZ(${half}px)`,
             }}
           />
         ))}
