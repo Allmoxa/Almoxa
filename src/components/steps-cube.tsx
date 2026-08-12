@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 type Step = {
   label: string;
@@ -10,7 +10,19 @@ const FACE_ANGLES = [0, 90, 180] as const;
 const SIZE = 340;
 const HALF = SIZE / 2;
 const INTERVAL_MS = 4200;
+const TILT = -14;
+
 const CARDBOARD = "#C19A6C";
+const CARDBOARD_LIGHT = "#D8B78C";
+const CARDBOARD_DARK = "#A9825A";
+const CARDBOARD_DARKER = "#8F6E4A";
+const INK = "#3B2A18";
+const INK_SOFT = "#6B4E30";
+const TAPE = "#EFE3CB";
+
+const corrugation: CSSProperties = {
+  backgroundImage: `repeating-linear-gradient(90deg, rgba(59,42,24,0.09) 0px, rgba(59,42,24,0.09) 2px, transparent 2px, transparent 7px)`,
+};
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
@@ -24,61 +36,98 @@ export function StepsCube({ steps }: { steps: Step[] }) {
 
   return (
     <section className="border-b border-border py-24">
-      <div className="mx-auto" style={{ perspective: 1400, width: SIZE, height: SIZE }}>
+      <div className="mx-auto" style={{ perspective: 1400, width: SIZE, height: SIZE + 40 }}>
         <div
           className="relative transition-transform duration-700 ease-in-out"
           style={{
             width: SIZE,
             height: SIZE,
             transformStyle: "preserve-3d",
-            transform: `rotateY(${index * -90}deg)`,
+            transform: `rotateX(${TILT}deg) rotateY(${index * -90}deg)`,
           }}
         >
           {steps.map((step, i) => (
             <article
               key={step.label}
-              className="paper-panel absolute flex flex-col justify-center gap-4 border-t-4 px-10"
+              className="absolute flex flex-col justify-center gap-4 border border-black/10 px-10 shadow-[0_18px_40px_-20px_rgba(59,42,24,0.45)]"
               style={{
                 width: SIZE,
                 height: SIZE,
-                borderTopColor: CARDBOARD,
+                backgroundColor: CARDBOARD,
+                ...corrugation,
                 transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF}px)`,
               }}
             >
-              <p className="font-mono text-xs" style={{ color: CARDBOARD }}>
+              <span
+                className="absolute left-0 top-14 h-6 w-full -rotate-1 opacity-90"
+                style={{ backgroundColor: TAPE }}
+              />
+              <p className="relative font-mono text-xs font-semibold tracking-widest" style={{ color: INK }}>
                 {step.label}
               </p>
-              <h2 className="text-3xl">{step.title}</h2>
-              <p className="max-w-sm text-sm text-muted-foreground">{step.text}</p>
+              <h2 className="relative text-3xl" style={{ color: INK }}>
+                {step.title}
+              </h2>
+              <p className="relative max-w-sm text-sm" style={{ color: INK_SOFT }}>
+                {step.text}
+              </p>
             </article>
           ))}
+
           <div
-            className="absolute border"
+            className="absolute border border-black/10"
             style={{
               width: SIZE,
               height: SIZE,
-              backgroundColor: "#A9825A",
-              borderColor: CARDBOARD,
+              backgroundColor: CARDBOARD_DARK,
+              ...corrugation,
               transform: `rotateY(-90deg) translateZ(${HALF}px)`,
             }}
           />
+
           <div
-            className="absolute border"
+            className="absolute overflow-hidden border border-black/10"
             style={{
               width: SIZE,
               height: SIZE,
-              backgroundColor: "#D4B285",
-              borderColor: CARDBOARD,
+              backgroundColor: CARDBOARD_DARKER,
               transform: `rotateX(90deg) translateZ(${HALF}px)`,
             }}
-          />
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                clipPath: "polygon(0% 0%, 100% 0%, 58% 100%, 0% 100%)",
+                background: `linear-gradient(135deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 42% 100%)",
+                background: `linear-gradient(225deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
+              }}
+            />
+            <span
+              className="absolute h-5 rotate-90"
+              style={{
+                left: "50%",
+                top: "35%",
+                width: SIZE * 0.55,
+                marginLeft: -(SIZE * 0.55) / 2,
+                backgroundColor: TAPE,
+                opacity: 0.92,
+              }}
+            />
+          </div>
+
           <div
-            className="absolute border"
+            className="absolute border border-black/10"
             style={{
               width: SIZE,
               height: SIZE,
-              backgroundColor: "#8F6E4A",
-              borderColor: CARDBOARD,
+              backgroundColor: CARDBOARD_DARKER,
+              ...corrugation,
               transform: `rotateX(-90deg) translateZ(${HALF}px)`,
             }}
           />
