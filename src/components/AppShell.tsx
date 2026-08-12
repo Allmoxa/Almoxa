@@ -1,5 +1,6 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
@@ -7,6 +8,8 @@ const nav = [
   { to: "/receber", label: "Receber" },
   { to: "/movimentacoes", label: "Movimentações" },
 ] as const;
+
+const adminNav = { to: "/admin", label: "Admin" } as const;
 
 export function AppShell({
   title,
@@ -20,6 +23,7 @@ export function AppShell({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const { role, isAdmin } = useUserRole();
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -34,7 +38,7 @@ export function AppShell({
             Almoxá
           </Link>
           <nav className="flex items-center gap-1">
-            {nav.map((item) => (
+            {(isAdmin ? [...nav, adminNav] : nav).map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -44,12 +48,25 @@ export function AppShell({
               </Link>
             ))}
           </nav>
-          <button
-            onClick={signOut}
-            className="ml-auto text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Sair
-          </button>
+          <div className="ml-auto flex items-center gap-4">
+            {role ? (
+              <span
+                className={`label-caps rounded-full px-2.5 py-1 ${
+                  isAdmin
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {roleLabel[role]}
+              </span>
+            ) : null}
+            <button
+              onClick={signOut}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
@@ -57,7 +74,9 @@ export function AppShell({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-4xl">{title}</h1>
-            {description ? <p className="mt-2 max-w-lg text-sm text-muted-foreground">{description}</p> : null}
+            {description ? (
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">{description}</p>
+            ) : null}
           </div>
           {action}
         </div>

@@ -10,12 +10,14 @@ export const Route = createFileRoute("/auth")({
       { title: "Entrar — Almoxá controle de estoque" },
       {
         name: "description",
-        content: "Acesse sua conta Almoxá para registrar entradas e saídas de produtos por foto ou documento.",
+        content:
+          "Acesse sua conta Almoxá para registrar entradas e saídas de produtos por foto ou documento.",
       },
       { property: "og:title", content: "Entrar — Almoxá controle de estoque" },
       {
         property: "og:description",
-        content: "Acesse sua conta Almoxá para registrar entradas e saídas de produtos por foto ou documento.",
+        content:
+          "Acesse sua conta Almoxá para registrar entradas e saídas de produtos por foto ou documento.",
       },
     ],
   }),
@@ -29,7 +31,6 @@ const schema = z.object({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,20 +50,9 @@ function AuthPage() {
     }
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: parsed.data.email,
-          password: parsed.data.password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        toast.success("Conta criada. Confirme o e-mail para entrar.");
-        setMode("signin");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword(parsed.data);
-        if (error) throw error;
-        navigate({ to: "/estoque" });
-      }
+      const { error } = await supabase.auth.signInWithPassword(parsed.data);
+      if (error) throw error;
+      navigate({ to: "/estoque" });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível continuar");
     } finally {
@@ -92,8 +82,8 @@ function AuthPage() {
 
       <div className="flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-sm">
-          <p className="label-caps">{mode === "signin" ? "Acesso" : "Nova conta"}</p>
-          <h1 className="mt-3 text-4xl">{mode === "signin" ? "Entre no seu estoque" : "Comece o seu estoque"}</h1>
+          <p className="label-caps">Acesso</p>
+          <h1 className="mt-3 text-4xl">Entre no seu estoque</h1>
 
           <form onSubmit={submit} className="mt-8 space-y-4">
             <div>
@@ -116,7 +106,7 @@ function AuthPage() {
               <input
                 id="password"
                 type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring"
@@ -127,7 +117,7 @@ function AuthPage() {
               disabled={busy}
               className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {mode === "signin" ? "Entrar" : "Criar conta"}
+              Entrar
             </button>
           </form>
 
@@ -145,12 +135,9 @@ function AuthPage() {
             Continuar com Google
           </button>
 
-          <button
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="mt-6 w-full text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {mode === "signin" ? "Não tenho conta ainda" : "Já tenho uma conta"}
-          </button>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Novos acessos são liberados por um administrador.
+          </p>
         </div>
       </div>
     </div>

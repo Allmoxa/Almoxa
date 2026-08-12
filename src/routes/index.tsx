@@ -73,7 +73,7 @@ function Landing() {
             to="/auth"
             className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Começar agora
+            Entrar na conta
           </Link>
         </section>
 
