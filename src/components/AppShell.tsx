@@ -1,5 +1,15 @@
 import { Link, useRouter } from "@tanstack/react-router";
+import { Check, Moon, Settings, Sun } from "lucide-react";
 import type { ReactNode } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "@/hooks/use-theme";
 import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +36,7 @@ export function AppShell({
 }) {
   const router = useRouter();
   const { role, isAdmin } = useUserRole();
+  const { theme, setTheme } = useTheme();
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -62,12 +73,35 @@ export function AppShell({
                 {roleLabel[role]}
               </span>
             ) : null}
-            <button
-              onClick={signOut}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Sair
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="Opções"
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  <Settings className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Tema</DropdownMenuLabel>
+                <DropdownMenuItem onClick={() => setTheme("light")} className="justify-between">
+                  <span className="flex items-center gap-2">
+                    <Sun className="size-4" />
+                    Claro
+                  </span>
+                  {theme === "light" ? <Check className="size-4" /> : null}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("dark")} className="justify-between">
+                  <span className="flex items-center gap-2">
+                    <Moon className="size-4" />
+                    Escuro
+                  </span>
+                  {theme === "dark" ? <Check className="size-4" /> : null}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut}>Sair</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
