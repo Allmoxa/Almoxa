@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
+import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, dateTime, qty, type Movement } from "@/lib/inventory";
 
@@ -43,7 +44,10 @@ function MovimentacoesPage() {
     <AppShell title="Movimentações" description="Toda entrada e saída registrada, com a origem de cada lançamento.">
       <div className="paper-panel overflow-hidden">
         {isLoading ? (
-          <p className="px-5 py-10 text-center text-sm text-muted-foreground">Carregando…</p>
+          <div className="flex flex-col items-center gap-3 px-5 py-10">
+            <BoxSpinner />
+            <p className="text-center text-sm text-muted-foreground">Carregando…</p>
+          </div>
         ) : movements.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">Nenhuma movimentação registrada ainda.</p>
         ) : (
