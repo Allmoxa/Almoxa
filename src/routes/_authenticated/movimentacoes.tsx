@@ -24,6 +24,7 @@ const sourceLabel: Record<Movement["source"], string> = {
   manual: "Manual",
   photo: "Foto",
   document: "Documento",
+  adjustment: "Ajuste",
 };
 
 function MovimentacoesPage() {
@@ -32,7 +33,7 @@ function MovimentacoesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("movements")
-        .select("id, product_id, kind, quantity, unit_price, source, note, created_at, products(name, sku)")
+        .select("id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, products(name, sku)")
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
