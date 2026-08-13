@@ -1,0 +1,22 @@
+# Sem este arquivo, quem trabalha no Windows com core.autocrlf=true recebe o
+# projeto inteiro em CRLF, e o Prettier -- que usa endOfLine "lf" -- reprova o
+# \r no fim de toda linha de todo arquivo. Resultado: `npm run lint` acusa
+# centenas de erros por arquivo e nunca passa em maquina Windows, enquanto o CI
+# em Linux passa. O atributo eol=lf tem precedencia sobre core.autocrlf, entao
+# ele resolve para todo mundo sem exigir configuracao local de cada dev.
+* text=auto eol=lf
+
+# Binarios nunca devem passar por conversao de fim de linha.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.avif binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.eot  binary
