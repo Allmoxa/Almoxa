@@ -147,7 +147,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("movements")
         .select(
-          "id, product_id, kind, quantity, unit_price, source, note, created_at, products(name, sku)",
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, products(name, sku)",
         )
         .eq("user_id", data.userId)
         .order("created_at", { ascending: false })
@@ -159,6 +159,6 @@ export const getUserDetail = createServerFn({ method: "GET" })
     return {
       user,
       products: products.data as Product[],
-      movements: movements.data as unknown as Movement[],
+      movements: movements.data as Movement[],
     };
   });
