@@ -54,7 +54,7 @@ function DashboardPage() {
 
   return (
     <AppShell title="Dashboard" description="Visão geral do seu negócio: estoque, vendas e tendências.">
-      <div className="theme-dashboard -mx-6 rounded-3xl bg-background px-5 py-8 sm:-mx-8 sm:px-8">
+      <div className="theme-dashboard -mx-4 rounded-3xl bg-background px-5 py-8 sm:-mx-6 sm:px-8">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 py-24">
             <BoxSpinner size={40} />

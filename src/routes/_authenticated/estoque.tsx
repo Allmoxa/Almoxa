@@ -361,7 +361,7 @@ function EstoquePage() {
         <p className="label-caps">{filtered.length} produtos</p>
       </div>
 
-      <div className="paper-panel mt-4 overflow-hidden">
+      <div className="paper-panel mt-4 overflow-x-auto">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10">
             <BoxSpinner />

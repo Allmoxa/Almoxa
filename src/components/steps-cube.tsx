@@ -8,8 +8,10 @@ type Step = {
 };
 
 const FACE_ANGLES = [0, 90, 180] as const;
-const SIZE = 340;
-const HALF = SIZE / 2;
+// Responsive: shrinks on narrow viewports so the box never overflows its column,
+// caps at 340px on larger screens. All face sizing derives from this one variable.
+const CUBE_SIZE = "clamp(220px, 72vw, 340px)";
+const HALF = "calc(var(--cube-size) / 2)";
 const INTERVAL_MS = 4200;
 const TILT = -14;
 const OPEN_TILT = -66;
@@ -26,6 +28,8 @@ const TAPE = "#EFE3CB";
 const corrugation: CSSProperties = {
   backgroundImage: `repeating-linear-gradient(90deg, rgba(59,42,24,0.09) 0px, rgba(59,42,24,0.09) 2px, transparent 2px, transparent 7px)`,
 };
+
+const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube-size)" };
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
@@ -49,8 +53,11 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   };
 
   return (
-    <div>
-      <div className="relative mx-auto" style={{ perspective: 1400, width: SIZE, height: SIZE + 40 }}>
+    <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
+      <div
+        className="relative mx-auto max-w-full"
+        style={{ perspective: 1400, width: "var(--cube-size)", height: "calc(var(--cube-size) + 40px)" }}
+      >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
           style={{
@@ -61,8 +68,7 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         <div
           className="relative transition-all duration-700 ease-in-out"
           style={{
-            width: SIZE,
-            height: SIZE,
+            ...faceSize,
             transformStyle: "preserve-3d",
             transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
               opening ? 1.16 : 1
@@ -73,13 +79,12 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           {steps.map((step, i) => (
             <article
               key={step.label}
-              className="absolute flex flex-col justify-center gap-4 border border-black/10 px-10 shadow-[0_18px_40px_-20px_rgba(59,42,24,0.45)]"
+              className="absolute flex flex-col justify-center gap-3 border border-black/10 px-6 shadow-[0_18px_40px_-20px_rgba(59,42,24,0.45)] sm:gap-4 sm:px-10"
               style={{
-                width: SIZE,
-                height: SIZE,
+                ...faceSize,
                 backgroundColor: CARDBOARD,
                 ...corrugation,
-                transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF}px)`,
+                transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF})`,
               }}
             >
               <p className="relative font-mono text-xs font-semibold tracking-widest" style={{ color: INK }}>
@@ -90,7 +95,7 @@ export function StepsCube({ steps }: { steps: Step[] }) {
                   className="absolute inset-y-0 left-0 -z-10 w-[calc(100%+1.5rem)] -rotate-1 opacity-95 shadow-sm"
                   style={{ backgroundColor: TAPE }}
                 />
-                <h2 className="px-3 text-3xl" style={{ color: INK }}>
+                <h2 className="px-3 text-2xl sm:text-3xl" style={{ color: INK }}>
                   {step.title}
                 </h2>
               </div>
@@ -114,21 +119,19 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           <div
             className="absolute border border-black/10"
             style={{
-              width: SIZE,
-              height: SIZE,
+              ...faceSize,
               backgroundColor: CARDBOARD_DARK,
               ...corrugation,
-              transform: `rotateY(-90deg) translateZ(${HALF}px)`,
+              transform: `rotateY(-90deg) translateZ(${HALF})`,
             }}
           />
 
           <div
             className="absolute overflow-hidden border border-black/10"
             style={{
-              width: SIZE,
-              height: SIZE,
+              ...faceSize,
               backgroundColor: CARDBOARD_DARKER,
-              transform: `rotateX(90deg) translateZ(${HALF}px)`,
+              transform: `rotateX(90deg) translateZ(${HALF})`,
             }}
           >
             <div
@@ -146,12 +149,10 @@ export function StepsCube({ steps }: { steps: Step[] }) {
               }}
             />
             <span
-              className="absolute h-5 rotate-90"
+              className="absolute h-5 w-[55%] -ml-[27.5%] rotate-90"
               style={{
                 left: "50%",
                 top: "35%",
-                width: SIZE * 0.55,
-                marginLeft: -(SIZE * 0.55) / 2,
                 backgroundColor: TAPE,
                 opacity: 0.92,
               }}
@@ -161,17 +162,19 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           <div
             className="absolute border border-black/10"
             style={{
-              width: SIZE,
-              height: SIZE,
+              ...faceSize,
               backgroundColor: CARDBOARD_DARKER,
               ...corrugation,
-              transform: `rotateX(-90deg) translateZ(${HALF}px)`,
+              transform: `rotateX(-90deg) translateZ(${HALF})`,
             }}
           />
         </div>
       </div>
 
-      <div className="mt-10 flex justify-center gap-2 transition-opacity duration-500" style={{ opacity: opening ? 0 : 1 }}>
+      <div
+        className="mt-10 flex justify-center gap-2 transition-opacity duration-500"
+        style={{ opacity: opening ? 0 : 1 }}
+      >
         {steps.map((step, i) => (
           <button
             key={step.label}
