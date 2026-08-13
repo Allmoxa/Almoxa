@@ -14,8 +14,11 @@ import { useTheme } from "@/hooks/use-theme";
 import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 
+// Ordem do ciclo da barraca: ver o que tem, planejar a compra, dar entrada,
+// vender, conferir.
 const nav = [
   { to: "/estoque", label: "Estoque" },
+  { to: "/comprar", label: "Comprar" },
   { to: "/receber", label: "Receber" },
   { to: "/vender", label: "Vender" },
   { to: "/movimentacoes", label: "Movimentações" },
@@ -72,7 +75,9 @@ export function AppShell({
             {role ? (
               <span
                 className={`label-caps rounded-full px-2.5 py-1 ${
-                  isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                  isAdmin
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-muted-foreground"
                 }`}
               >
                 {roleLabel[role]}
@@ -119,13 +124,18 @@ export function AppShell({
                   <Menu className="size-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="flex w-[85vw] max-w-xs flex-col gap-0 sm:max-w-sm">
+              <SheetContent
+                side="right"
+                className="flex w-[85vw] max-w-xs flex-col gap-0 sm:max-w-sm"
+              >
                 <SheetTitle className="font-display text-lg">Almoxá</SheetTitle>
 
                 {role ? (
                   <span
                     className={`label-caps mt-3 w-fit rounded-full px-2.5 py-1 ${
-                      isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                      isAdmin
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-muted-foreground"
                     }`}
                   >
                     {roleLabel[role]}
@@ -190,7 +200,9 @@ export function AppShell({
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl sm:text-4xl">{title}</h1>
-            {description ? <p className="mt-2 max-w-lg text-sm text-muted-foreground">{description}</p> : null}
+            {description ? (
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">{description}</p>
+            ) : null}
           </div>
           {action}
         </div>
