@@ -184,7 +184,7 @@ function AdminPage() {
         </form>
       ) : null}
 
-      <div className="paper-panel mt-10 overflow-hidden">
+      <div className="paper-panel mt-10 overflow-x-auto">
         {isLoading ? (
           <p className="px-5 py-10 text-center text-sm text-muted-foreground">Carregando…</p>
         ) : users.length === 0 ? (

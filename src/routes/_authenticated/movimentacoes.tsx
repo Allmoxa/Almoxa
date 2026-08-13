@@ -43,7 +43,7 @@ function MovimentacoesPage() {
 
   return (
     <AppShell title="Movimentações" description="Toda entrada e saída registrada, com a origem de cada lançamento.">
-      <div className="paper-panel overflow-hidden">
+      <div className="paper-panel overflow-x-auto">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10">
             <BoxSpinner />
