@@ -98,7 +98,31 @@ function VenderPage() {
     },
   });
 
+  // Ranking de mais vendidos nos últimos 30 dias, para o atalho de produtos frequentes.
+  const { data: frequentIds = [] } = useQuery({
+    queryKey: ["frequent-sold-products"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("movements")
+        .select("product_id, quantity")
+        .eq("kind", "out")
+        .neq("source", "adjustment")
+        .gte("created_at", since);
+      if (error) throw error;
+      const totals = new Map<string, number>();
+      for (const m of data) totals.set(m.product_id, (totals.get(m.product_id) ?? 0) + m.quantity);
+      return [...totals.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([id]) => id);
+    },
+  });
+
   const productById = new Map(products.map((p) => [p.id, p]));
+  const frequentProducts = frequentIds
+    .map((id) => productById.get(id))
+    .filter((product): product is Product => !!product);
 
   const openLines = (next: SaleLine[], total: number, from: "manual" | "document") => {
     setOrigin(from);
@@ -429,6 +453,7 @@ function VenderPage() {
       {building ? (
         <SaleBuilderDialog
           products={products}
+          frequentProducts={frequentProducts}
           onCancel={() => setBuilding(false)}
           onSubmit={(built: BuiltSaleLine[], builtTotal) => {
             setBuilding(false);

@@ -13,6 +13,8 @@ type Row = { key: number; productId: string; quantity: string };
 
 type Props = {
   products: Product[];
+  /** Mais vendidos recentemente, para adicionar com um clique em vez de digitar. */
+  frequentProducts?: Product[];
   onCancel: () => void;
   onSubmit: (lines: BuiltSaleLine[], total: number) => void;
 };
@@ -28,11 +30,40 @@ const num = (value: string) => {
 let nextKey = 1;
 const newRow = (): Row => ({ key: nextKey++, productId: "", quantity: "1" });
 
-export function SaleBuilderDialog({ products, onCancel, onSubmit }: Props) {
+export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, onSubmit }: Props) {
   const [rows, setRows] = useState<Row[]>([newRow()]);
   const [total, setTotal] = useState("");
 
   const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+
+  // Já no carrinho: soma a quantidade de todas as linhas desse produto, para
+  // mostrar no chip e decidir se um clique incrementa em vez de criar linha nova.
+  const cartQtyByProduct = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of rows) {
+      if (!row.productId) continue;
+      totals.set(row.productId, (totals.get(row.productId) ?? 0) + num(row.quantity));
+    }
+    return totals;
+  }, [rows]);
+
+  // Um clique no chip: soma 1 na linha já existente do produto, preenche a
+  // primeira linha vazia, ou cria uma linha nova — nessa ordem de preferência.
+  const quickAdd = (product: Product) => {
+    setRows((current) => {
+      const existing = current.find((row) => row.productId === product.id);
+      if (existing) {
+        return current.map((row) =>
+          row.key === existing.key ? { ...row, quantity: String(num(row.quantity) + 1) } : row,
+        );
+      }
+      const empty = current.find((row) => !row.productId);
+      if (empty) {
+        return current.map((row) => (row.key === empty.key ? { ...row, productId: product.id, quantity: "1" } : row));
+      }
+      return [...current, { key: nextKey++, productId: product.id, quantity: "1" }];
+    });
+  };
 
   const lines = rows.map((row) => {
     const product = byId.get(row.productId) ?? null;
@@ -94,6 +125,34 @@ export function SaleBuilderDialog({ products, onCancel, onSubmit }: Props) {
           Escolha os produtos e a quantidade, informe quanto o cliente pagou no total e o valor de cada peça sai
           calculado.
         </p>
+
+        {frequentProducts.length > 0 ? (
+          <div className="mt-5">
+            <p className="label-caps">Mais vendidos</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {frequentProducts.map((product) => {
+                const empty = product.quantity <= 0;
+                const inCart = cartQtyByProduct.get(product.id) ?? 0;
+                return (
+                  <button
+                    key={product.id}
+                    type="button"
+                    onClick={() => quickAdd(product)}
+                    disabled={empty}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors disabled:opacity-40 ${
+                      inCart > 0
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border-strong hover:bg-secondary"
+                    }`}
+                  >
+                    {product.name}
+                    {empty ? " · esgotado" : inCart > 0 ? ` · ${qty(inCart)}` : ""}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-6 space-y-3">
           {lines.map((line, index) => {
