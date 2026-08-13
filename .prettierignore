@@ -6,3 +6,7 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# Gerado pelo Supabase CLI, mesmo caso do routeTree.gen.ts acima: formatar aqui
+# so cria ruido, porque a proxima geracao desfaz.
+src/integrations/supabase/types.ts
