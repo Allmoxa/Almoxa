@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { ProductPicker } from "@/components/product-picker";
 import { SaleBuilderDialog, type BuiltSaleLine } from "@/components/sale-builder-dialog";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
@@ -328,18 +329,13 @@ function VenderPage() {
                   return (
                     <tr key={line.key} className="border-b border-border last:border-0">
                       <td className="px-4 py-3">
-                        <select
+                        <ProductPicker
+                          products={products}
                           value={line.productId}
-                          onChange={(e) => update(line.key, { productId: e.target.value })}
-                          className={`${inputClass} min-w-52`}
-                        >
-                          <option value="">Escolher produto…</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.name} — {qty(product.quantity)} un.
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(productId) => update(line.key, { productId })}
+                          fallbackLabel={line.label}
+                          className="min-w-52"
+                        />
                         {!line.productId ? (
                           <p className="mt-1 text-xs text-destructive">
                             &ldquo;{line.label}&rdquo; não está no estoque

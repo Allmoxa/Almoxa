@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ProductPicker } from "@/components/product-picker";
 import { currency, qty, splitReference, splitSaleTotal, type Product } from "@/lib/inventory";
 
 export type BuiltSaleLine = {
@@ -100,18 +101,11 @@ export function SaleBuilderDialog({ products, onCancel, onSubmit }: Props) {
             return (
               <div key={line.row.key} className="grid grid-cols-[1fr_5rem_auto] items-start gap-3">
                 <div>
-                  <select
+                  <ProductPicker
+                    products={products}
                     value={line.row.productId}
-                    onChange={(event) => update(line.row.key, { productId: event.target.value })}
-                    className={inputClass}
-                  >
-                    <option value="">Escolher produto…</option>
-                    {products.map((product) => (
-                      <option key={product.id} value={product.id}>
-                        {product.name} — {qty(product.quantity)} un.
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(productId) => update(line.row.key, { productId })}
+                  />
                   {line.product && line.quantity > 0 ? (
                     <p className={`mt-1 text-xs ${short ? "text-destructive" : "text-muted-foreground"}`}>
                       {short
