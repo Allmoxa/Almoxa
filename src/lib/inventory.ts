@@ -5,9 +5,12 @@ export const qty = (value: number) =>
   new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(value || 0);
 
 export const dateTime = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(
-    new Date(value),
-  );
+  new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 
 export const slugSku = (name: string) =>
   name
@@ -43,7 +46,10 @@ export type Movement = {
 };
 
 /** Saída registrada como venda — ajustes de estoque ficam de fora. */
-export type Sale = Pick<Movement, "product_id" | "quantity" | "unit_price" | "unit_cost" | "created_at">;
+export type Sale = Pick<
+  Movement,
+  "product_id" | "quantity" | "unit_price" | "unit_cost" | "created_at"
+>;
 
 export type ProfitSummary = {
   today: number;
@@ -108,6 +114,70 @@ export function profitByProduct(sales: Sale[], now: Date = new Date()): Map<stri
 
 export const noProfit = (): ProfitSummary => ({ ...emptyProfit });
 
+export type PurchaseSuggestion = {
+  product: Product;
+  /** Unidades vendidas dentro da janela analisada. */
+  sold: number;
+  /** Média de unidades vendidas por dia. */
+  perDay: number;
+  /** Dias que o estoque atual ainda cobre; Infinity quando o item não vende. */
+  daysLeft: number;
+  /** Quanto comprar para cobrir o período pedido, arredondado para cima. */
+  suggested: number;
+  /** Custo unitário usado na conta — o preço de compra atual do produto. */
+  unitCost: number;
+};
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Monta a lista de recompra a partir do ritmo de venda de cada produto.
+ *
+ * A média diária divide pelos dias em que o produto existiu, não pela janela
+ * inteira: um item cadastrado há três dias que vendeu seis unidades vende duas
+ * por dia, não 0,2. Sem esse cuidado todo produto novo pareceria parado e
+ * ficaria de fora justamente da primeira compra de reposição.
+ *
+ * O que não vendeu na janela não entra. A lista é para repor o que gira — o
+ * que está encalhado já tem lugar próprio em "produtos parados", no dashboard.
+ */
+export function purchaseSuggestions(
+  products: Product[],
+  sales: Sale[],
+  {
+    windowDays,
+    coverDays,
+    now = new Date(),
+  }: { windowDays: number; coverDays: number; now?: Date },
+): PurchaseSuggestion[] {
+  const windowStart = now.getTime() - windowDays * DAY_MS;
+
+  const soldByProduct = new Map<string, number>();
+  for (const sale of sales) {
+    if (new Date(sale.created_at).getTime() < windowStart) continue;
+    soldByProduct.set(sale.product_id, (soldByProduct.get(sale.product_id) ?? 0) + sale.quantity);
+  }
+
+  return products
+    .map((product) => {
+      const sold = soldByProduct.get(product.id) ?? 0;
+      const age = (now.getTime() - new Date(product.created_at).getTime()) / DAY_MS;
+      const observed = Math.max(1, Math.min(windowDays, age));
+      const perDay = sold / observed;
+      const needed = perDay * coverDays - product.quantity;
+      return {
+        product,
+        sold,
+        perDay,
+        daysLeft: perDay > 0 ? product.quantity / perDay : Infinity,
+        suggested: needed > 0 ? Math.ceil(needed) : 0,
+        unitCost: product.purchase_price,
+      };
+    })
+    .filter((item) => item.sold > 0 && item.suggested > 0)
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
 /** Linha de uma venda em lote: o que saiu e quanto essa saída valeria pela tabela. */
 export type SplitLine = {
   quantity: number;
@@ -137,13 +207,17 @@ export function splitSaleTotal(lines: SplitLine[], total: number): number[] {
   if (unitSum <= 0) return lines.map(() => 0);
 
   const weightSum = entries.reduce((sum, entry) => sum + entry.quantity * entry.reference, 0);
-  const base = entries.map((entry) => (weightSum > 0 ? entry.quantity * entry.reference : entry.quantity));
+  const base = entries.map((entry) =>
+    weightSum > 0 ? entry.quantity * entry.reference : entry.quantity,
+  );
   const baseSum = weightSum > 0 ? weightSum : unitSum;
 
   const totalCents = Math.max(0, Math.round(total * 100));
   const cents = base.map((weight) => Math.floor((totalCents * weight) / baseSum));
 
-  const heaviest = base.map((weight, index) => ({ weight, index })).sort((a, b) => b.weight - a.weight);
+  const heaviest = base
+    .map((weight, index) => ({ weight, index }))
+    .sort((a, b) => b.weight - a.weight);
   let rest = totalCents - cents.reduce((sum, c) => sum + c, 0);
   for (let k = 0; rest > 0; k += 1, rest -= 1) {
     const target = heaviest[k % heaviest.length];
