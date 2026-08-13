@@ -152,7 +152,8 @@ function AdminPage() {
             <input
               id="new-password"
               name="password"
-              type="text"
+              type="password"
+              autoComplete="new-password"
               className={`mt-2 ${inputClass}`}
               placeholder="mín. 6 caracteres"
             />
