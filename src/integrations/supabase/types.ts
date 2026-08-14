@@ -22,6 +22,8 @@ export type Database = {
           note: string | null
           product_id: string
           quantity: number
+          reverses_id: string | null
+          reversed_at: string | null
           source: string
           unit_cost: number
           unit_price: number
@@ -34,6 +36,8 @@ export type Database = {
           note?: string | null
           product_id: string
           quantity: number
+          reverses_id?: string | null
+          reversed_at?: string | null
           source?: string
           unit_cost?: number
           unit_price?: number
@@ -46,6 +50,8 @@ export type Database = {
           note?: string | null
           product_id?: string
           quantity?: number
+          reverses_id?: string | null
+          reversed_at?: string | null
           source?: string
           unit_cost?: number
           unit_price?: number
@@ -57,6 +63,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movements_reverses_id_fkey"
+            columns: ["reverses_id"]
+            isOneToOne: true
+            referencedRelation: "movements"
             referencedColumns: ["id"]
           },
         ]

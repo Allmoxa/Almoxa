@@ -5,7 +5,14 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
-import { currency, purchaseSuggestions, qty, type Product, type Sale } from "@/lib/inventory";
+import {
+  currency,
+  purchaseSuggestions,
+  qty,
+  NON_SALE_SOURCES_FILTER,
+  type Product,
+  type Sale,
+} from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/comprar")({
   head: () => ({
@@ -77,7 +84,8 @@ function ComprarPage() {
         .from("movements")
         .select("product_id, quantity, unit_price, unit_cost, created_at")
         .eq("kind", "out")
-        .neq("source", "adjustment")
+        .not("source", "in", NON_SALE_SOURCES_FILTER)
+        .is("reversed_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Sale[];

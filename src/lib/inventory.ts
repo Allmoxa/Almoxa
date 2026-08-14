@@ -32,6 +32,8 @@ export type Product = {
   created_at: string;
 };
 
+export type MovementSource = "manual" | "photo" | "document" | "adjustment" | "reversal";
+
 export type Movement = {
   id: string;
   product_id: string;
@@ -39,9 +41,13 @@ export type Movement = {
   quantity: number;
   unit_price: number;
   unit_cost: number;
-  source: "manual" | "photo" | "document" | "adjustment";
+  source: MovementSource;
   note: string | null;
   created_at: string;
+  /** Preenchido na linha do estorno: o lançamento que ele desfaz. */
+  reverses_id: string | null;
+  /** Preenchido na linha do original assim que alguém a estorna. */
+  reversed_at: string | null;
   products?: { name: string; sku: string } | null;
 };
 
@@ -50,6 +56,28 @@ export type Sale = Pick<
   Movement,
   "product_id" | "quantity" | "unit_price" | "unit_cost" | "created_at"
 >;
+
+/** Origens que movem estoque sem ser compra ou venda: correção e desfazimento. */
+export const NON_SALE_SOURCES = ["adjustment", "reversal"] as const;
+
+/**
+ * O mesmo filtro em sintaxe PostgREST, para as telas que já descartam o que não
+ * é venda na consulta em vez de trazer tudo e peneirar no navegador.
+ * Acompanha `.is("reversed_at", null)`: a venda estornada também não conta.
+ */
+export const NON_SALE_SOURCES_FILTER = `(${NON_SALE_SOURCES.join(",")})`;
+
+/**
+ * Saída que de fato vendeu: nem ajuste, nem estorno, nem venda já estornada.
+ *
+ * Estornar uma venda não lança lucro negativo — apaga o lucro que ela gerou.
+ * Por isso o original sai da conta junto com o estorno, em vez de os dois se
+ * somarem a zero: fosse por soma, as unidades vendidas continuariam contando.
+ */
+export const isRealSale = (movement: Pick<Movement, "kind" | "source" | "reversed_at">): boolean =>
+  movement.kind === "out" &&
+  !NON_SALE_SOURCES.includes(movement.source as (typeof NON_SALE_SOURCES)[number]) &&
+  !movement.reversed_at;
 
 export type ProfitSummary = {
   today: number;

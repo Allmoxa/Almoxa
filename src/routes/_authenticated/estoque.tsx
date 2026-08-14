@@ -16,6 +16,7 @@ import {
   profitSummary,
   qty,
   slugSku,
+  NON_SALE_SOURCES_FILTER,
   type Product,
   type Sale,
 } from "@/lib/inventory";
@@ -46,10 +47,31 @@ const productSchema = z.object({
 const inputClass =
   "w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring";
 
+const PAGE_SIZE = 25;
+
+/**
+ * Páginas a mostrar no rodapé: as vizinhas da atual, mais a primeira e a última.
+ * Acima de sete páginas o resto vira reticências, senão a linha de botões passa
+ * a rolar de lado no celular.
+ */
+function pageWindow(current: number, total: number): (number | "gap")[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const around = [current - 1, current, current + 1].filter((page) => page > 1 && page < total);
+  const pages = [1, ...around, total];
+  const out: (number | "gap")[] = [];
+  pages.forEach((page, index) => {
+    const previous = pages[index - 1];
+    if (previous !== undefined && page - previous > 1) out.push("gap");
+    out.push(page);
+  });
+  return out;
+}
+
 function EstoquePage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [moving, setMoving] = useState<{ product: Product; kind: "in" | "out" } | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [profiting, setProfiting] = useState<Product | null>(null);
@@ -73,7 +95,8 @@ function EstoquePage() {
         .from("movements")
         .select("product_id, quantity, unit_price, unit_cost, created_at")
         .eq("kind", "out")
-        .neq("source", "adjustment")
+        .not("source", "in", NON_SALE_SOURCES_FILTER)
+        .is("reversed_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Sale[];
@@ -216,6 +239,15 @@ function EstoquePage() {
     return products.filter((p) => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term));
   }, [products, search]);
 
+  // A paginação é do lado do navegador de propósito: os totais no topo e a busca
+  // precisam do catálogo inteiro de qualquer forma, então buscar por página só
+  // acrescentaria idas ao banco sem tirar nada da memória.
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  // Derivado, não guardado: remover o último item de uma página recua sozinho.
+  const currentPage = Math.min(page, pageCount);
+  const firstIndex = (currentPage - 1) * PAGE_SIZE;
+  const visible = filtered.slice(firstIndex, firstIndex + PAGE_SIZE);
+
   const totals = useMemo(() => {
     const cost = products.reduce((sum, p) => sum + p.quantity * p.purchase_price, 0);
     const revenue = products.reduce((sum, p) => sum + p.quantity * p.sale_price, 0);
@@ -354,11 +386,18 @@ function EstoquePage() {
       <div className="mt-10 flex items-center justify-between gap-4">
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder="Buscar por nome ou SKU"
           className="max-w-xs rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
         />
-        <p className="label-caps">{filtered.length} produtos</p>
+        <p className="label-caps">
+          {filtered.length > PAGE_SIZE
+            ? `${firstIndex + 1}–${firstIndex + visible.length} de ${filtered.length} produtos`
+            : `${filtered.length} produtos`}
+        </p>
       </div>
 
       <div className="paper-panel mt-4 overflow-x-auto">
@@ -384,7 +423,7 @@ function EstoquePage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((product) => {
+              {visible.map((product) => {
                 const profit = product.sale_price - product.purchase_price;
                 return (
                   <tr key={product.id} className="border-b border-border last:border-0">
@@ -443,6 +482,53 @@ function EstoquePage() {
           </table>
         )}
       </div>
+
+      {pageCount > 1 ? (
+        <nav
+          aria-label="Paginação do estoque"
+          className="mt-6 flex items-center justify-center gap-1.5"
+        >
+          <button
+            type="button"
+            onClick={() => setPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            Anterior
+          </button>
+
+          {pageWindow(currentPage, pageCount).map((item, index) =>
+            item === "gap" ? (
+              <span key={`gap-${index}`} className="px-1.5 text-sm text-muted-foreground">
+                …
+              </span>
+            ) : (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setPage(item)}
+                aria-current={item === currentPage ? "page" : undefined}
+                className={`min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors ${
+                  item === currentPage
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border-strong text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {item}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            onClick={() => setPage(currentPage + 1)}
+            disabled={currentPage === pageCount}
+            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+          >
+            Próxima
+          </button>
+        </nav>
+      ) : null}
 
       {moving ? (
         <ProductMovementDialog
