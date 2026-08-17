@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { StepsCube } from "@/components/steps-cube";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { AosInit } from "@/components/aos-init";
-import { TextReveal } from "@/components/text-reveal";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 
@@ -77,11 +76,9 @@ function Landing() {
             <p className="label-caps" data-aos="fade-up">
               Controle de entrada e saída
             </p>
-            <TextReveal
-              as="h1"
-              text="Seu estoque atualizado com uma foto."
-              className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl"
-            />
+            <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
+              Seu estoque atualizado com uma foto.
+            </h1>
             <p
               className="mt-6 max-w-xl text-base text-muted-foreground"
               data-aos="fade-up"
