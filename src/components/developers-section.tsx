@@ -50,19 +50,14 @@ const cardVariants: Variants = {
 };
 
 /**
- * Tira de fita de embalagem de verdade (foto, fundo já transparente).
- * Puramente decorativa — className controla tamanho e posição de cada uso;
- * flip espelha horizontalmente pra fita "ir" pro outro lado.
+ * Tira de fita de embalagem. Puramente decorativa — className controla
+ * tamanho, posição e rotação de cada uso.
  */
-function TapeStrip({ className, flip }: { className: string; flip?: boolean }) {
+function TapeStrip({ className }: { className: string }) {
   return (
-    <img
-      src="/tape/tape-strip.webp"
-      alt=""
+    <span
       aria-hidden="true"
-      className={`pointer-events-none absolute select-none drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)] ${
-        flip ? "-scale-x-100" : ""
-      } ${className}`}
+      className={`pointer-events-none absolute bg-[#EFE3CB]/90 shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${className}`}
     />
   );
 }
@@ -70,8 +65,8 @@ function TapeStrip({ className, flip }: { className: string; flip?: boolean }) {
 export function DevelopersSection({ children }: { children?: ReactNode }) {
   return (
     <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-t-[2.5rem] bg-background">
-      <TapeStrip className="-top-8 left-6 w-28 sm:left-16 sm:w-32" />
-      <TapeStrip className="-top-8 right-6 w-28 sm:right-16 sm:w-32" flip />
+      <TapeStrip className="-top-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
+      <TapeStrip className="-top-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
 
       <div className="mx-auto max-w-5xl px-6 py-24">
         <motion.p
@@ -105,7 +100,9 @@ export function DevelopersSection({ children }: { children?: ReactNode }) {
               viewport={{ once: true, amount: 0.4 }}
               whileHover={{ y: -4 }}
             >
-              <TapeStrip className="-top-5 left-1/2 w-20 -translate-x-1/2" flip={i % 2 === 1} />
+              <TapeStrip
+                className={`-top-4 left-1/2 h-9 w-20 -translate-x-1/2 ${i % 2 === 0 ? "-rotate-2" : "rotate-2"}`}
+              />
               <img
                 src={dev.photo}
                 alt={dev.name}
@@ -138,8 +135,8 @@ export function DevelopersSection({ children }: { children?: ReactNode }) {
 
         {children ? (
           <div className="rule-top relative mt-16 pt-8">
-            <TapeStrip className="-top-5 left-6 w-16 sm:left-12" />
-            <TapeStrip className="-top-5 right-6 w-16 sm:right-12" flip />
+            <TapeStrip className="-top-4 left-10 h-8 w-16 rotate-3 sm:left-16" />
+            <TapeStrip className="-top-4 right-10 h-8 w-16 -rotate-3 sm:right-16" />
             {children}
           </div>
         ) : null}
