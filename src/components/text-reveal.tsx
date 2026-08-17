@@ -28,9 +28,9 @@ export function TextReveal({
     const tween = gsap.to(words, {
       yPercent: 0,
       opacity: 1,
-      duration: 0.9,
-      ease: "power4.out",
-      stagger: 0.05,
+      duration: 0.4,
+      ease: "power2.out",
+      stagger: 0.02,
       clearProps: "transform",
       scrollTrigger: {
         trigger: el,
