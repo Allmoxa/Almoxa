@@ -10,6 +10,7 @@ import { ProductProfitDialog } from "@/components/product-profit-dialog";
 import { StoreStockView } from "@/components/store-stock-view";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PaginationNav } from "@/components/ui/pagination-nav";
+import { useStoreContext } from "@/hooks/use-store-context";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -67,6 +68,7 @@ function EstoquePage() {
 
 function EstoqueDono() {
   const queryClient = useQueryClient();
+  const { storeOwnerId } = useStoreContext();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -106,10 +108,12 @@ function EstoqueDono() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
       const { data, error } = await supabase
         .from("products")
         .insert({
-          user_id: userId,
+          user_id: storeId,
           name: values.name,
           sku: values.sku || slugSku(values.name),
           purchase_price: values.purchase_price,
@@ -121,7 +125,7 @@ function EstoqueDono() {
       if (error) throw error;
       if (values.quantity > 0) {
         const { error: movementError } = await supabase.from("movements").insert({
-          user_id: userId,
+          user_id: storeId,
           product_id: data.id,
           kind: "in",
           quantity: values.quantity,
@@ -155,10 +159,12 @@ function EstoqueDono() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
       if (kind === "out" && quantity > product.quantity)
         throw new Error("Quantidade maior que o estoque disponível");
       const { error } = await supabase.from("movements").insert({
-        user_id: userId,
+        user_id: storeId,
         product_id: product.id,
         kind,
         quantity,
@@ -182,6 +188,8 @@ function EstoqueDono() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
 
       if (
         values.purchase_price !== product.purchase_price ||
@@ -199,7 +207,7 @@ function EstoqueDono() {
       const delta = values.quantity - product.quantity;
       if (delta !== 0) {
         const { error } = await supabase.from("movements").insert({
-          user_id: userId,
+          user_id: storeId,
           product_id: product.id,
           kind: delta > 0 ? "in" : "out",
           quantity: Math.abs(delta),

@@ -131,7 +131,25 @@ export const createUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => createUserSchema.parse(data))
   .handler(async ({ data, context }): Promise<{ id: string }> => {
-    const supabaseAdmin = await requireOnisciente(context.userId);
+    // O onisciente cria qualquer conta. O dono de loja também contrata, mas só
+    // comissionado e só para a própria loja — senão ele se promoveria a
+    // onisciente criando uma conta e entrando nela.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: papeis, error: papeisError } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (papeisError) throw new Error("Não foi possível validar suas permissões.");
+
+    const onisciente = papeis.some((row) => row.role === "onisciente");
+    const donoDaLoja =
+      papeis.some((row) => row.role === "admin") &&
+      data.role === "comissionado" &&
+      data.storeOwnerId === context.userId;
+
+    if (!onisciente && !donoDaLoja) {
+      throw new Error("Você não pode criar este tipo de conta.");
+    }
 
     // Comissionado precisa de uma loja que exista e que seja de um dono de fato.
     if (data.role === "comissionado") {

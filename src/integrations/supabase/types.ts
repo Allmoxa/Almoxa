@@ -183,6 +183,26 @@ export type Database = {
           email: string
         }[]
       }
+      operating_store: {
+        Args: Record<PropertyKey, never>
+        Returns: string | null
+      }
+      enter_store: {
+        Args: { _store_owner_id: string }
+        Returns: undefined
+      }
+      leave_store: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      current_context: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          store_owner_id: string | null
+          store_email: string | null
+          entered: boolean
+        }[]
+      }
       store_team: {
         Args: { _since?: string | null }
         Returns: {

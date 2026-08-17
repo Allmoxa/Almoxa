@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useStoreContext, useEnterStore } from "@/hooks/use-store-context";
 import { useTheme } from "@/hooks/use-theme";
 import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,8 @@ export function AppShell({
 }) {
   const router = useRouter();
   const { role, isOnisciente, isComissionado } = useUserRole();
+  const { entered, storeEmail } = useStoreContext();
+  const { leave } = useEnterStore();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -207,6 +210,26 @@ export function AppShell({
           </div>
         </div>
       </header>
+
+      {entered ? (
+        <div className="border-b border-primary/30 bg-primary/10">
+          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+            <p className="text-sm">
+              Você está operando dentro de{" "}
+              <span className="font-medium">{storeEmail ?? "outra conta"}</span>. Tudo que lançar
+              entra no estoque dela — com o seu nome no histórico.
+            </p>
+            <button
+              type="button"
+              onClick={() => leave.mutate()}
+              disabled={leave.isPending}
+              className="rounded-md border border-border-strong bg-card px-3 py-1 text-xs whitespace-nowrap transition-colors hover:bg-secondary disabled:opacity-50"
+            >
+              Sair da loja
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="flex flex-wrap items-end justify-between gap-4">

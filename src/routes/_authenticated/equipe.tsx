@@ -4,7 +4,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { useStoreContext } from "@/hooks/use-store-context";
 import { requireOwner } from "@/lib/guards";
+import { createUser } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, qty } from "@/lib/inventory";
 
@@ -62,9 +64,29 @@ const percent = (value: number) =>
 
 function EquipePage() {
   const queryClient = useQueryClient();
+  const { storeOwnerId, storeEmail, entered } = useStoreContext();
   const [period, setPeriod] = useState<PeriodKey>("mes");
   // Só as taxas que estão sendo editadas agora; o resto vem do servidor.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [hiring, setHiring] = useState(false);
+
+  const hire = useMutation({
+    mutationFn: (values: { email: string; password: string }) =>
+      createUser({
+        data: {
+          email: values.email,
+          password: values.password,
+          role: "comissionado" as const,
+          storeOwnerId: storeOwnerId!,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Comissionado criado — já pode entrar e vender");
+      setHiring(false);
+      queryClient.invalidateQueries({ queryKey: ["store-team"] });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao criar conta"),
+  });
 
   const { data: team = [], isLoading } = useQuery({
     queryKey: ["store-team", period],
@@ -118,8 +140,80 @@ function EquipePage() {
   return (
     <AppShell
       title="Equipe"
-      description="O percentual de cada comissionado e quanto ele tem a receber. Mudar o percentual vale para as próximas vendas — o que já foi vendido mantém a taxa do dia."
+      description={
+        entered
+          ? `Comissionados de ${storeEmail ?? "esta loja"}. Mudar o percentual vale para as próximas vendas — o que já foi vendido mantém a taxa do dia.`
+          : "O percentual de cada comissionado e quanto ele tem a receber. Mudar o percentual vale para as próximas vendas — o que já foi vendido mantém a taxa do dia."
+      }
+      action={
+        <button
+          onClick={() => setHiring((v) => !v)}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          {hiring ? "Cancelar" : "Novo comissionado"}
+        </button>
+      }
     >
+      {hiring ? (
+        <form
+          className="paper-panel mb-6 grid gap-4 p-5 sm:grid-cols-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = new FormData(event.currentTarget);
+            const email = String(form.get("email") ?? "").trim();
+            const password = String(form.get("password") ?? "");
+            if (!email.includes("@")) {
+              toast.error("E-mail inválido");
+              return;
+            }
+            if (password.length < 6) {
+              toast.error("A senha precisa de ao menos 6 caracteres");
+              return;
+            }
+            hire.mutate({ email, password });
+          }}
+        >
+          <div>
+            <label className="label-caps" htmlFor="hire-email">
+              E-mail
+            </label>
+            <input
+              id="hire-email"
+              name="email"
+              type="email"
+              className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
+              placeholder="vendedor@loja.com"
+            />
+          </div>
+          <div>
+            <label className="label-caps" htmlFor="hire-password">
+              Senha provisória
+            </label>
+            <input
+              id="hire-password"
+              name="password"
+              type="password"
+              autoComplete="new-password"
+              className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
+              placeholder="mín. 6 caracteres"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={hire.isPending || !storeOwnerId}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              Criar conta
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground sm:col-span-3">
+            A conta nasce vinculada a esta loja e com o e-mail já confirmado. O percentual começa em
+            zero — defina na tabela abaixo depois de criar.
+          </p>
+        </form>
+      ) : null}
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="label-caps">Período</p>

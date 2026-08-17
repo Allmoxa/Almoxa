@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { PaginationNav } from "@/components/ui/pagination-nav";
+import { useEnterStore } from "@/hooks/use-store-context";
 import { roleLabel, type AppRole } from "@/hooks/use-user-role";
 import { requireOnisciente } from "@/lib/guards";
 import { createUser, getUserDetail, listUsers } from "@/lib/admin.functions";
@@ -56,6 +57,7 @@ const sourceLabel: Record<Movement["source"], string> = {
 
 function AdminPage() {
   const queryClient = useQueryClient();
+  const { enter } = useEnterStore();
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<AppRole>("admin");
@@ -325,13 +327,24 @@ function AdminPage() {
                   <td className="px-3 py-4 text-right tabular-nums">{qty(user.units)}</td>
                   <td className="px-3 py-4 text-right tabular-nums">{currency(user.cost)}</td>
                   <td className="px-3 py-4 text-right tabular-nums">{user.movements}</td>
-                  <td className="px-5 py-4 text-right">
-                    <button
-                      onClick={() => openUser(user.id)}
-                      className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                    >
-                      Ver estoque
-                    </button>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => openUser(user.id)}
+                        className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                      >
+                        Ver estoque
+                      </button>
+                      {user.role === "comissionado" ? null : (
+                        <button
+                          onClick={() => enter.mutate(user.id)}
+                          disabled={enter.isPending}
+                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                        >
+                          Adentrar
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

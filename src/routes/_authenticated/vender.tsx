@@ -8,6 +8,7 @@ import { ProductPicker } from "@/components/product-picker";
 import { SaleBuilderDialog, type BuiltSaleLine } from "@/components/sale-builder-dialog";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
+import { useStoreContext } from "@/hooks/use-store-context";
 import { useUserRole } from "@/hooks/use-user-role";
 import { extractSale, type ExtractedSaleItem } from "@/lib/sale-intake.functions";
 import {
@@ -95,6 +96,7 @@ function VenderPage() {
   const [building, setBuilding] = useState(false);
 
   const role = useUserRole();
+  const { storeOwnerId } = useStoreContext();
   const isComissionado = role.isComissionado;
 
   const { data: products = [] } = useQuery({
@@ -225,8 +227,9 @@ function VenderPage() {
 
       // O movimento pertence ao dono do estoque, não a quem lançou. Quem lançou
       // é carimbado pelo banco em created_by, e é assim que a venda do
-      // comissionado sai do estoque certo com o nome dele junto.
-      const stockOwnerId = role.storeOwnerId ?? userId;
+      // comissionado — ou do onisciente que adentrou — sai do estoque certo com
+      // o nome de quem vendeu junto.
+      const stockOwnerId = storeOwnerId ?? userId;
 
       const ref = Date.now().toString(36).toUpperCase().slice(-4);
       const { error } = await supabase.from("movements").insert(
