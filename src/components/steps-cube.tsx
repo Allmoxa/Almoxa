@@ -32,39 +32,6 @@ const corrugation: CSSProperties = {
 
 const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube-size)" };
 
-// Ponta das duas abas do topo: em 0 (fechada) elas quase se tocam no meio,
-// como hoje; em 1 (aberta) recuam para os cantos e revelam o miolo escuro
-// da caixa por baixo, de onde os produtos parecem sair.
-const FLAP_TIP_CLOSED = 58;
-const FLAP_TIP_OPEN = 18;
-const flapTip = (openness: number) => FLAP_TIP_CLOSED - (FLAP_TIP_CLOSED - FLAP_TIP_OPEN) * openness;
-
-function HeadphonesIcon({ className, style }: { className?: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} style={style} fill="none">
-      <path d="M10 26v-4a14 14 0 0 1 28 0v4" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
-      <rect x="6" y="24" width="9" height="15" rx="4" fill={INK} />
-      <rect x="33" y="24" width="9" height="15" rx="4" fill={INK} />
-    </svg>
-  );
-}
-
-function ChipsBagIcon({ className, style }: { className?: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 40 48" className={className} style={style} fill="none">
-      <path d="M8 10 4 6M32 10l4-4" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />
-      <path
-        d="M6 10h28l-3 34a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3Z"
-        fill="#E7C24B"
-        stroke={INK}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-      <path d="M9 22h22M10 30h20" stroke={INK} strokeWidth="1.5" strokeOpacity="0.4" />
-    </svg>
-  );
-}
-
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
   const [opening, setOpening] = useState(false);
@@ -82,11 +49,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   }, [index, opening, steps.length]);
 
   const spin = () => setIndex((i) => (i + 1) % steps.length);
-
-  // 0 na primeira face, 1 na última: a caixa vai abrindo aos poucos conforme
-  // ela gira, em vez de pular pronta de fechada para aberta.
-  const openProgress = index / Math.max(steps.length - 1, 1);
-  const atLastStep = index === steps.length - 1;
 
   const handleTest = () => {
     if (opening) return;
@@ -121,19 +83,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         >
           <RotateCw className="h-4 w-4" strokeWidth={2.5} />
         </button>
-
-        {atLastStep && !opening ? (
-          <div className="pointer-events-none absolute inset-x-0 top-[18%] z-[15] flex justify-center gap-7">
-            <HeadphonesIcon
-              className="h-10 w-10 animate-product-rise drop-shadow-md"
-              style={{ "--rise-x": "-20px", "--rise-rot": "-14deg", animationDelay: "60ms" } as CSSProperties}
-            />
-            <ChipsBagIcon
-              className="h-11 w-9 animate-product-rise drop-shadow-md"
-              style={{ "--rise-x": "22px", "--rise-rot": "11deg", animationDelay: "260ms" } as CSSProperties}
-            />
-          </div>
-        ) : null}
         <div
           className="relative transition-all duration-700 ease-in-out"
           style={{
@@ -204,26 +153,26 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             }}
           >
             <div
-              className="absolute inset-0 transition-[clip-path] duration-700 ease-in-out"
+              className="absolute inset-0"
               style={{
-                clipPath: `polygon(0% 0%, 100% 0%, ${flapTip(openProgress)}% 100%, 0% 100%)`,
+                clipPath: "polygon(0% 0%, 100% 0%, 58% 100%, 0% 100%)",
                 background: `linear-gradient(135deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
               }}
             />
             <div
-              className="absolute inset-0 transition-[clip-path] duration-700 ease-in-out"
+              className="absolute inset-0"
               style={{
-                clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, ${100 - flapTip(openProgress)}% 100%)`,
+                clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 42% 100%)",
                 background: `linear-gradient(225deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
               }}
             />
             <span
-              className="absolute h-5 w-[55%] -ml-[27.5%] rotate-90 transition-opacity duration-500"
+              className="absolute h-5 w-[55%] -ml-[27.5%] rotate-90"
               style={{
                 left: "50%",
                 top: "35%",
                 backgroundColor: TAPE,
-                opacity: 0.92 * (1 - openProgress),
+                opacity: 0.92,
               }}
             />
           </div>
