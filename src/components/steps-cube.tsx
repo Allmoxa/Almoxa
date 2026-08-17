@@ -62,13 +62,18 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         className="relative mx-auto max-w-full"
-        style={{ perspective: 1400, width: "var(--cube-size)", height: "calc(var(--cube-size) + 40px)" }}
+        style={{
+          perspective: 1400,
+          width: "var(--cube-size)",
+          height: "calc(var(--cube-size) + 40px)",
+        }}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
           style={{
             opacity: opening ? 1 : 0,
-            background: "radial-gradient(circle at 50% 12%, rgba(255,250,235,0.95), transparent 62%)",
+            background:
+              "radial-gradient(circle at 50% 12%, rgba(255,250,235,0.95), transparent 62%)",
           }}
         />
 
@@ -105,7 +110,10 @@ export function StepsCube({ steps }: { steps: Step[] }) {
                 transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF})`,
               }}
             >
-              <p className="relative font-mono text-xs font-semibold tracking-widest" style={{ color: INK }}>
+              <p
+                className="relative font-mono text-xs font-semibold tracking-widest"
+                style={{ color: INK }}
+              >
                 {step.label}
               </p>
               <div className="relative -mx-3 py-2">
