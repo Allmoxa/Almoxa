@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       movements: {
         Row: {
+          commission_rate: number
           created_at: string
           created_by: string | null
           id: string
@@ -31,6 +32,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          commission_rate?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -46,6 +48,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          commission_rate?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -120,6 +123,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          commission_rate: number
           role: Database["public"]["Enums"]["app_role"]
           store_owner_id: string | null
           user_id: string
@@ -127,6 +131,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          commission_rate?: number
           role?: Database["public"]["Enums"]["app_role"]
           store_owner_id?: string | null
           user_id: string
@@ -134,6 +139,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          commission_rate?: number
           role?: Database["public"]["Enums"]["app_role"]
           store_owner_id?: string | null
           user_id?: string
@@ -176,6 +182,21 @@ export type Database = {
           id: string
           email: string
         }[]
+      }
+      store_team: {
+        Args: { _since?: string | null }
+        Returns: {
+          id: string
+          email: string
+          commission_rate: number
+          sold_total: number
+          commission_total: number
+          sales_count: number
+        }[]
+      }
+      set_commission_rate: {
+        Args: { _member_id: string; _rate: number }
+        Returns: undefined
       }
     }
     Enums: {

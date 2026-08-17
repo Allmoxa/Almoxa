@@ -22,7 +22,7 @@ export type StoreProduct = {
  * quatro colunas. Custo e lucro não chegam nem a sair do servidor — esconder
  * coluna no React esconderia da vista, não do DevTools.
  */
-export function useStoreProducts() {
+function useStoreProducts() {
   return useQuery({
     queryKey: ["store-products"],
     queryFn: async () => {
