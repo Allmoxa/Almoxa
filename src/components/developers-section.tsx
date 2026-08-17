@@ -50,66 +50,68 @@ const cardVariants: Variants = {
 
 export function DevelopersSection() {
   return (
-    <section className="rule-top py-24">
-      <motion.p
-        className="label-caps"
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.5 }}
-      >
-        Quem fez
-      </motion.p>
-      <motion.h2
-        className="mt-4 max-w-xl text-4xl leading-[1.05] sm:text-5xl"
-        initial={{ opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.6 }}
-        transition={{ duration: 0.5, delay: 0.05 }}
-      >
-        Feito por quem também vive de estoque e planilha.
-      </motion.h2>
+    <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-t-[2.5rem] bg-background">
+      <div className="mx-auto max-w-5xl px-6 py-24">
+        <motion.p
+          className="label-caps"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 0.5 }}
+        >
+          Quem fez
+        </motion.p>
+        <motion.h2
+          className="mt-4 max-w-xl font-display text-4xl leading-[1.05] text-foreground sm:text-5xl"
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 0.5, delay: 0.05 }}
+        >
+          Feito por quem também vive de estoque e planilha.
+        </motion.h2>
 
-      <div className="mt-12 grid gap-6 sm:grid-cols-2">
-        {developers.map((dev, i) => (
-          <motion.div
-            key={dev.name}
-            className="paper-panel flex items-center gap-5 p-6"
-            custom={i}
-            variants={cardVariants}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.4 }}
-            whileHover={{ y: -4 }}
-          >
-            <img
-              src={dev.photo}
-              alt={dev.name}
-              className="size-20 shrink-0 rounded-full border border-border object-cover"
-            />
-            <div>
-              <p className="font-display text-xl">{dev.name}</p>
-              <p className="text-sm text-muted-foreground">{dev.role}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground/80">{dev.bio}</p>
-              <div className="mt-3 flex gap-3">
-                {dev.links.map((link) => (
-                  <motion.a
-                    key={link.label}
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`${dev.name} no ${link.label}`}
-                    className="text-muted-foreground transition-colors hover:text-foreground"
-                    whileHover={{ scale: 1.15 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <link.icon className="size-5" />
-                  </motion.a>
-                ))}
+        <div className="mt-12 grid gap-6 sm:grid-cols-2">
+          {developers.map((dev, i) => (
+            <motion.div
+              key={dev.name}
+              className="paper-panel flex items-center gap-5 p-6"
+              custom={i}
+              variants={cardVariants}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, amount: 0.4 }}
+              whileHover={{ y: -4 }}
+            >
+              <img
+                src={dev.photo}
+                alt={dev.name}
+                className="size-20 shrink-0 rounded-full border border-border object-cover"
+              />
+              <div>
+                <p className="font-display text-xl text-foreground">{dev.name}</p>
+                <p className="text-sm text-muted-foreground">{dev.role}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground/80">{dev.bio}</p>
+                <div className="mt-3 flex gap-3">
+                  {dev.links.map((link) => (
+                    <motion.a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`${dev.name} no ${link.label}`}
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      whileHover={{ scale: 1.15 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <link.icon className="size-5" />
+                    </motion.a>
+                  ))}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
