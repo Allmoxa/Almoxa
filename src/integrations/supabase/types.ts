@@ -17,6 +17,7 @@ export type Database = {
       movements: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           kind: string
           note: string | null
@@ -31,6 +32,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           kind: string
           note?: string | null
@@ -45,6 +47,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           kind?: string
           note?: string | null
@@ -118,18 +121,21 @@ export type Database = {
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          store_owner_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          store_owner_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          store_owner_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -146,13 +152,34 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
+      is_onisciente: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      current_store_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      store_products: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          sku: string
+          quantity: number
+          sale_price: number
+        }[]
+      }
+      store_members: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+        }[]
+      }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "onisciente" | "admin" | "comissionado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -280,7 +307,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["onisciente", "admin", "comissionado"],
     },
   },
 } as const

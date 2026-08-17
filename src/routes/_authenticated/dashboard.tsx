@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireOwner } from "@/lib/guards";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
       { name: "description", content: "Visão geral do negócio: estoque baixo, mais vendidos, lucro e movimentação." },
     ],
   }),
+  beforeLoad: requireOwner,
   component: DashboardPage,
 });
 

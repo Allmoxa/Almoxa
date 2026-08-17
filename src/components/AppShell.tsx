@@ -25,7 +25,14 @@ const nav = [
   { to: "/dashboard", label: "Dashboard" },
 ] as const;
 
-const adminNav = { to: "/admin", label: "Admin" } as const;
+// O comissionado vê o estoque da loja e vende. Comprar, receber, o histórico e
+// o dashboard contam custo e lucro, que não são assunto dele.
+const comissionadoNav = [
+  { to: "/estoque", label: "Estoque" },
+  { to: "/vender", label: "Vender" },
+] as const;
+
+const oniscienteNav = { to: "/admin", label: "Onisciente" } as const;
 
 export function AppShell({
   title,
@@ -39,11 +46,15 @@ export function AppShell({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { role, isAdmin } = useUserRole();
+  const { role, isOnisciente, isComissionado } = useUserRole();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const items = isAdmin ? [...nav, adminNav] : nav;
+  const items = isComissionado
+    ? [...comissionadoNav]
+    : isOnisciente
+      ? [...nav, oniscienteNav]
+      : [...nav];
 
   const signOut = async () => {
     setMobileOpen(false);
@@ -75,7 +86,7 @@ export function AppShell({
             {role ? (
               <span
                 className={`label-caps rounded-full px-2.5 py-1 ${
-                  isAdmin
+                  isOnisciente
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground"
                 }`}
@@ -133,7 +144,7 @@ export function AppShell({
                 {role ? (
                   <span
                     className={`label-caps mt-3 w-fit rounded-full px-2.5 py-1 ${
-                      isAdmin
+                      isOnisciente
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-muted-foreground"
                     }`}

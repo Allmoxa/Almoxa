@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireOwner } from "@/lib/guards";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/movimentacoes")({
       },
     ],
   }),
+  beforeLoad: requireOwner,
   component: MovimentacoesPage,
 });
 
@@ -45,7 +47,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("movements")
         .select(
-          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, reverses_id, reversed_at, products(name, sku)",
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, reverses_id, reversed_at, products(name, sku)",
         )
         .order("created_at", { ascending: false })
         .limit(300);
@@ -53,6 +55,20 @@ function MovimentacoesPage() {
       return data as unknown as Movement[];
     },
   });
+
+  // Quem lançou cada movimento. store_members() devolve o dono e a equipe dele,
+  // porque auth.users não é legível direto pelo cliente.
+  const { data: members = [] } = useQuery({
+    queryKey: ["store-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("store_members");
+      if (error) throw error;
+      return (data ?? []) as { id: string; email: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const emailById = new Map(members.map((member) => [member.id, member.email]));
 
   const reverse = useMutation({
     mutationFn: async (movement: Movement) => {
@@ -109,6 +125,7 @@ function MovimentacoesPage() {
                 <th className="label-caps px-3 py-3 font-normal">Produto</th>
                 <th className="label-caps px-3 py-3 font-normal">Tipo</th>
                 <th className="label-caps px-3 py-3 font-normal">Origem</th>
+                <th className="label-caps px-3 py-3 font-normal">Quem lançou</th>
                 <th className="label-caps px-3 py-3 text-right font-normal">Qtd.</th>
                 <th className="label-caps px-3 py-3 text-right font-normal">Valor</th>
                 <th className="px-5 py-3" />
@@ -147,6 +164,11 @@ function MovimentacoesPage() {
                     </td>
                     <td className="px-3 py-4 text-muted-foreground">
                       {sourceLabel[movement.source]}
+                    </td>
+                    <td className="px-3 py-4 text-xs text-muted-foreground">
+                      {movement.created_by
+                        ? (emailById.get(movement.created_by) ?? "—")
+                        : "—"}
                     </td>
                     <td className="px-3 py-4 text-right tabular-nums">{qty(movement.quantity)}</td>
                     <td className="px-3 py-4 text-right tabular-nums">

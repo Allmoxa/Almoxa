@@ -7,7 +7,9 @@ import { AppShell } from "@/components/AppShell";
 import { ProductEditDialog, type ProductEditValues } from "@/components/product-edit-dialog";
 import { ProductMovementDialog, type MovementValues } from "@/components/product-movement-dialog";
 import { ProductProfitDialog } from "@/components/product-profit-dialog";
+import { StoreStockView } from "@/components/store-stock-view";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
   currency,
@@ -68,6 +70,16 @@ function pageWindow(current: number, total: number): (number | "gap")[] {
 }
 
 function EstoquePage() {
+  const { isComissionado, isLoading: loadingRole } = useUserRole();
+
+  // O comissionado não tem linha de products pela RLS, então esta tela não teria
+  // o que mostrar para ele — nem faria sentido, cheia de custo e lucro.
+  if (loadingRole) return null;
+  if (isComissionado) return <StoreStockView />;
+  return <EstoqueDono />;
+}
+
+function EstoqueDono() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");

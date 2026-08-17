@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireOwner } from "@/lib/guards";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/comprar")({
       },
     ],
   }),
+  beforeLoad: requireOwner,
   component: ComprarPage,
 });
 

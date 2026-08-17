@@ -1,11 +1,11 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
-import { roleLabel } from "@/hooks/use-user-role";
-import { supabase } from "@/integrations/supabase/client";
+import { roleLabel, type AppRole } from "@/hooks/use-user-role";
+import { requireOnisciente } from "@/lib/guards";
 import { createUser, getUserDetail, listUsers } from "@/lib/admin.functions";
 import { currency, dateTime, qty, type Movement } from "@/lib/inventory";
 
@@ -19,26 +19,26 @@ export const Route = createFileRoute("/_authenticated/admin")({
       },
     ],
   }),
-  beforeLoad: async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
-    if (!userId) throw redirect({ to: "/auth" });
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!data) throw redirect({ to: "/estoque" });
-  },
+  beforeLoad: requireOnisciente,
   component: AdminPage,
 });
 
-const formSchema = z.object({
-  email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-  password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
-  admin: z.boolean(),
-});
+const formSchema = z
+  .object({
+    email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
+    password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
+    role: z.enum(["onisciente", "admin", "comissionado"]),
+    storeOwnerId: z.string().uuid().nullable(),
+  })
+  .refine((data) => data.role !== "comissionado" || !!data.storeOwnerId, {
+    message: "Escolha de qual loja o comissionado vende",
+  });
+
+const roleHint: Record<AppRole, string> = {
+  onisciente: "Enxerga o estoque de todas as contas.",
+  admin: "Dono do próprio estoque, com todas as funções.",
+  comissionado: "Só vê o estoque da loja e registra vendas.",
+};
 
 const inputClass =
   "w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring";
@@ -55,6 +55,8 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [newRole, setNewRole] = useState<AppRole>("admin");
+  const [newStore, setNewStore] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -73,20 +75,26 @@ function AdminPage() {
     onSuccess: () => {
       toast.success("Usuário criado");
       setCreating(false);
+      setNewRole("admin");
+      setNewStore("");
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "Erro ao criar usuário"),
   });
 
+  // Só quem tem estoque próprio pode receber comissionado.
+  const lojas = users.filter((user) => user.role !== "comissionado");
+
   const totals = users.reduce(
     (acc, user) => ({
       users: acc.users + 1,
       admins: acc.admins + (user.role === "admin" ? 1 : 0),
+      comissionados: acc.comissionados + (user.role === "comissionado" ? 1 : 0),
       units: acc.units + user.units,
       cost: acc.cost + user.cost,
     }),
-    { users: 0, admins: 0, units: 0, cost: 0 },
+    { users: 0, admins: 0, comissionados: 0, units: 0, cost: 0 },
   );
 
   return (
@@ -104,9 +112,9 @@ function AdminPage() {
     >
       <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
         {[
-          { label: "Usuários", value: String(totals.users) },
-          { label: "Administradores", value: String(totals.admins) },
-          { label: "Unidades em estoque", value: qty(totals.units) },
+          { label: "Contas", value: String(totals.users) },
+          { label: "Admins", value: String(totals.admins) },
+          { label: "Comissionados", value: String(totals.comissionados) },
           { label: "Custo total", value: currency(totals.cost) },
         ].map((item) => (
           <div key={item.label} className="bg-card px-5 py-5">
@@ -125,7 +133,8 @@ function AdminPage() {
             const parsed = formSchema.safeParse({
               email: form.get("email"),
               password: form.get("password"),
-              admin: form.get("admin") === "on",
+              role: newRole,
+              storeOwnerId: newRole === "comissionado" ? newStore || null : null,
             });
             if (!parsed.success) {
               toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
@@ -159,17 +168,43 @@ function AdminPage() {
               placeholder="mín. 6 caracteres"
             />
           </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 pb-2 text-sm" htmlFor="new-admin">
-              <input
-                id="new-admin"
-                name="admin"
-                type="checkbox"
-                className="size-4 accent-primary"
-              />
-              Administrador
+          <div>
+            <label className="label-caps" htmlFor="new-role">
+              Papel
             </label>
+            <select
+              id="new-role"
+              value={newRole}
+              onChange={(event) => setNewRole(event.target.value as AppRole)}
+              className={`mt-2 ${inputClass}`}
+            >
+              <option value="admin">{roleLabel.admin}</option>
+              <option value="comissionado">{roleLabel.comissionado}</option>
+              <option value="onisciente">{roleLabel.onisciente}</option>
+            </select>
           </div>
+
+          {newRole === "comissionado" ? (
+            <div className="sm:col-span-2">
+              <label className="label-caps" htmlFor="new-store">
+                Vende o estoque de
+              </label>
+              <select
+                id="new-store"
+                value={newStore}
+                onChange={(event) => setNewStore(event.target.value)}
+                className={`mt-2 ${inputClass}`}
+              >
+                <option value="">Escolha a loja…</option>
+                {lojas.map((loja) => (
+                  <option key={loja.id} value={loja.id}>
+                    {loja.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
           <div className="sm:col-span-4">
             <button
               type="submit"
@@ -179,8 +214,8 @@ function AdminPage() {
               Criar usuário
             </button>
             <p className="mt-3 text-xs text-muted-foreground">
-              A conta já nasce com o e-mail confirmado. Peça para a pessoa trocar a senha no
-              primeiro acesso.
+              {roleHint[newRole]} A conta já nasce com o e-mail confirmado — peça para a pessoa
+              trocar a senha no primeiro acesso.
             </p>
           </div>
         </form>
@@ -221,13 +256,18 @@ function AdminPage() {
                   <td className="px-3 py-4">
                     <span
                       className={`label-caps rounded-full px-2.5 py-1 ${
-                        user.role === "admin"
+                        user.role === "onisciente"
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary text-muted-foreground"
                       }`}
                     >
                       {roleLabel[user.role]}
                     </span>
+                    {user.storeOwnerEmail ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        vende de {user.storeOwnerEmail}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-4 text-right tabular-nums">{user.products}</td>
                   <td className="px-3 py-4 text-right tabular-nums">{qty(user.units)}</td>
@@ -342,6 +382,7 @@ function AdminPage() {
                         <th className="label-caps px-2 py-2 font-normal">Produto</th>
                         <th className="label-caps px-2 py-2 font-normal">Tipo</th>
                         <th className="label-caps px-2 py-2 font-normal">Origem</th>
+                        <th className="label-caps px-2 py-2 font-normal">Quem lançou</th>
                         <th className="label-caps px-2 py-2 text-right font-normal">Qtd.</th>
                         <th className="label-caps px-2 py-2 text-right font-normal">Valor</th>
                       </tr>
@@ -367,6 +408,9 @@ function AdminPage() {
                           </td>
                           <td className="px-2 py-3 text-muted-foreground">
                             {sourceLabel[movement.source]}
+                          </td>
+                          <td className="px-2 py-3 text-xs text-muted-foreground">
+                            {movement.created_by_email ?? "—"}
                           </td>
                           <td className="px-2 py-3 text-right tabular-nums">
                             {qty(movement.quantity)}

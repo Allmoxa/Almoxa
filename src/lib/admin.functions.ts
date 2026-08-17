@@ -8,6 +8,9 @@ export type AdminUser = {
   id: string;
   email: string;
   role: AppRole;
+  /** Só para comissionado: de quem é o estoque que ele vende. */
+  storeOwnerId: string | null;
+  storeOwnerEmail: string | null;
   created_at: string;
   last_sign_in_at: string | null;
   products: number;
@@ -23,30 +26,36 @@ export type AdminUserDetail = {
   movements: Movement[];
 };
 
-const createUserSchema = z.object({
-  email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-  password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
-  admin: z.boolean().default(false),
-});
+const createUserSchema = z
+  .object({
+    email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
+    password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
+    role: z.enum(["onisciente", "admin", "comissionado"]),
+    storeOwnerId: z.string().uuid().nullable().default(null),
+  })
+  .refine((data) => data.role !== "comissionado" || !!data.storeOwnerId, {
+    message: "Escolha de qual loja o comissionado vende",
+    path: ["storeOwnerId"],
+  });
 
 const userIdSchema = z.object({ userId: z.string().uuid() });
 
 // supabaseAdmin ignora RLS, então todo handler daqui começa por aqui: o middleware
-// garante que há sessão, esta função garante que a sessão é de um administrador.
-async function requireAdmin(userId: string) {
+// garante que há sessão, esta função garante que a sessão é de um onisciente.
+async function requireOnisciente(userId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "admin")
+    .eq("role", "onisciente")
     .maybeSingle();
   if (error) throw new Error("Não foi possível validar suas permissões.");
-  if (!data) throw new Error("Acesso restrito a administradores.");
+  if (!data) throw new Error("Acesso restrito ao onisciente.");
   return supabaseAdmin;
 }
 
-type AdminClient = Awaited<ReturnType<typeof requireAdmin>>;
+type AdminClient = Awaited<ReturnType<typeof requireOnisciente>>;
 
 async function listAdminUsers(supabaseAdmin: AdminClient): Promise<AdminUser[]> {
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers({
@@ -56,16 +65,30 @@ async function listAdminUsers(supabaseAdmin: AdminClient): Promise<AdminUser[]> 
   if (authError) throw new Error("Não foi possível carregar os usuários.");
 
   const [roles, products, movements] = await Promise.all([
-    supabaseAdmin.from("user_roles").select("user_id, role"),
+    supabaseAdmin.from("user_roles").select("user_id, role, store_owner_id"),
     supabaseAdmin.from("products").select("user_id, quantity, purchase_price, sale_price"),
     supabaseAdmin.from("movements").select("user_id"),
   ]);
   if (roles.error || products.error || movements.error)
     throw new Error("Não foi possível carregar os dados dos usuários.");
 
-  const adminIds = new Set(
-    roles.data.filter((row) => row.role === "admin").map((row) => row.user_id),
-  );
+  const emailById = new Map(authData.users.map((user) => [user.id, user.email ?? "—"]));
+
+  // Quem foi promovido guarda também a linha do papel anterior, então vale o
+  // mais alto — a mesma regra que o app usa no menu.
+  const rank: AppRole[] = ["onisciente", "admin", "comissionado"];
+  const roleOf = new Map<string, AppRole>();
+  const storeOf = new Map<string, string>();
+  for (const row of roles.data) {
+    const current = roleOf.get(row.user_id);
+    if (!current || rank.indexOf(row.role) < rank.indexOf(current)) {
+      roleOf.set(row.user_id, row.role);
+    }
+    if (row.role === "comissionado" && row.store_owner_id) {
+      storeOf.set(row.user_id, row.store_owner_id);
+    }
+  }
+
   const movementCount = new Map<string, number>();
   for (const row of movements.data) {
     movementCount.set(row.user_id, (movementCount.get(row.user_id) ?? 0) + 1);
@@ -73,10 +96,13 @@ async function listAdminUsers(supabaseAdmin: AdminClient): Promise<AdminUser[]> 
 
   return authData.users.map((user) => {
     const owned = products.data.filter((product) => product.user_id === user.id);
+    const storeOwnerId = storeOf.get(user.id) ?? null;
     return {
       id: user.id,
       email: user.email ?? "—",
-      role: adminIds.has(user.id) ? ("admin" as const) : ("user" as const),
+      role: roleOf.get(user.id) ?? ("admin" as AppRole),
+      storeOwnerId,
+      storeOwnerEmail: storeOwnerId ? (emailById.get(storeOwnerId) ?? null) : null,
       created_at: user.created_at,
       last_sign_in_at: user.last_sign_in_at ?? null,
       products: owned.length,
@@ -97,7 +123,7 @@ async function listAdminUsers(supabaseAdmin: AdminClient): Promise<AdminUser[]> 
 export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ users: AdminUser[] }> => {
-    const supabaseAdmin = await requireAdmin(context.userId);
+    const supabaseAdmin = await requireOnisciente(context.userId);
     return { users: await listAdminUsers(supabaseAdmin) };
   });
 
@@ -105,7 +131,20 @@ export const createUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => createUserSchema.parse(data))
   .handler(async ({ data, context }): Promise<{ id: string }> => {
-    const supabaseAdmin = await requireAdmin(context.userId);
+    const supabaseAdmin = await requireOnisciente(context.userId);
+
+    // Comissionado precisa de uma loja que exista e que seja de um dono de fato.
+    if (data.role === "comissionado") {
+      const { data: owner, error: ownerError } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .eq("user_id", data.storeOwnerId!)
+        .in("role", ["admin", "onisciente"])
+        .limit(1)
+        .maybeSingle();
+      if (ownerError) throw new Error("Não foi possível validar a loja escolhida.");
+      if (!owner) throw new Error("A loja escolhida não pertence a um admin.");
+    }
 
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
@@ -116,13 +155,24 @@ export const createUser = createServerFn({ method: "POST" })
       throw new Error(error?.message ?? "Não foi possível criar o usuário.");
     }
 
-    // O papel 'user' vem do trigger em auth.users; só o de admin precisa ser gravado.
-    if (data.admin) {
-      const { error: roleError } = await supabaseAdmin
+    // O gatilho em auth.users já deixa a conta como 'admin' — dona do próprio
+    // estoque. Comissionado é o oposto disso, então essa linha sai.
+    if (data.role === "comissionado") {
+      await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: created.user.id, role: "admin" });
+        .delete()
+        .eq("user_id", created.user.id)
+        .eq("role", "admin");
+    }
+
+    if (data.role !== "admin") {
+      const { error: roleError } = await supabaseAdmin.from("user_roles").insert({
+        user_id: created.user.id,
+        role: data.role,
+        store_owner_id: data.role === "comissionado" ? data.storeOwnerId : null,
+      });
       if (roleError)
-        throw new Error("Usuário criado, mas não foi possível torná-lo administrador.");
+        throw new Error(`Usuário criado, mas o papel não foi aplicado: ${roleError.message}`);
     }
 
     return { id: created.user.id };
@@ -132,7 +182,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => userIdSchema.parse(data))
   .handler(async ({ data, context }): Promise<AdminUserDetail> => {
-    const supabaseAdmin = await requireAdmin(context.userId);
+    const supabaseAdmin = await requireOnisciente(context.userId);
 
     const users = await listAdminUsers(supabaseAdmin);
     const user = users.find((item) => item.id === data.userId);
@@ -147,7 +197,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("movements")
         .select(
-          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, reverses_id, reversed_at, products(name, sku)",
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, reverses_id, reversed_at, products(name, sku)",
         )
         .eq("user_id", data.userId)
         .order("created_at", { ascending: false })
@@ -156,9 +206,16 @@ export const getUserDetail = createServerFn({ method: "GET" })
     if (products.error || movements.error)
       throw new Error("Não foi possível carregar o estoque deste usuário.");
 
+    // Quem lançou pode ser um comissionado desta loja. O e-mail sai de users, que
+    // só o service_role alcança — por isso ele é resolvido aqui, e não na tela.
+    const emailById = new Map(users.map((item) => [item.id, item.email]));
+
     return {
       user,
       products: products.data as Product[],
-      movements: movements.data as Movement[],
+      movements: (movements.data as Movement[]).map((movement) => ({
+        ...movement,
+        created_by_email: movement.created_by ? (emailById.get(movement.created_by) ?? null) : null,
+      })),
     };
   });
