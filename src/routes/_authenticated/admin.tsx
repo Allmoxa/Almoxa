@@ -1,13 +1,16 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { roleLabel } from "@/hooks/use-user-role";
+import { PaginationNav } from "@/components/ui/pagination-nav";
 import { supabase } from "@/integrations/supabase/client";
 import { createUser, getUserDetail, listUsers } from "@/lib/admin.functions";
 import { currency, dateTime, qty, type Movement } from "@/lib/inventory";
+
+const PAGE_SIZE = 15;
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -55,6 +58,9 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [productsPage, setProductsPage] = useState(1);
+  const [movementsPage, setMovementsPage] = useState(1);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -67,6 +73,38 @@ function AdminPage() {
     queryFn: () => getUserDetail({ data: { userId: selected! } }),
     enabled: selected !== null,
   });
+
+  const openUser = (userId: string) => {
+    setSelected(userId);
+    setProductsPage(1);
+    setMovementsPage(1);
+  };
+
+  const usersPageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const currentUsersPage = Math.min(usersPage, usersPageCount);
+  const usersFirstIndex = (currentUsersPage - 1) * PAGE_SIZE;
+  const visibleUsers = useMemo(
+    () => users.slice(usersFirstIndex, usersFirstIndex + PAGE_SIZE),
+    [users, usersFirstIndex],
+  );
+
+  const detailProducts = detail.data?.products ?? [];
+  const productsPageCount = Math.max(1, Math.ceil(detailProducts.length / PAGE_SIZE));
+  const currentProductsPage = Math.min(productsPage, productsPageCount);
+  const productsFirstIndex = (currentProductsPage - 1) * PAGE_SIZE;
+  const visibleProducts = useMemo(
+    () => detailProducts.slice(productsFirstIndex, productsFirstIndex + PAGE_SIZE),
+    [detailProducts, productsFirstIndex],
+  );
+
+  const detailMovements = detail.data?.movements ?? [];
+  const movementsPageCount = Math.max(1, Math.ceil(detailMovements.length / PAGE_SIZE));
+  const currentMovementsPage = Math.min(movementsPage, movementsPageCount);
+  const movementsFirstIndex = (currentMovementsPage - 1) * PAGE_SIZE;
+  const visibleMovements = useMemo(
+    () => detailMovements.slice(movementsFirstIndex, movementsFirstIndex + PAGE_SIZE),
+    [detailMovements, movementsFirstIndex],
+  );
 
   const addUser = useMutation({
     mutationFn: (values: z.infer<typeof formSchema>) => createUser({ data: values }),
@@ -186,7 +224,21 @@ function AdminPage() {
         </form>
       ) : null}
 
-      <div className="paper-panel mt-10 overflow-x-auto">
+      {usersPageCount > 1 ? (
+        <div className="mt-10 flex items-center justify-between gap-4">
+          <p className="label-caps">
+            {usersFirstIndex + 1}–{usersFirstIndex + visibleUsers.length} de {users.length} usuários
+          </p>
+          <PaginationNav
+            currentPage={currentUsersPage}
+            pageCount={usersPageCount}
+            onChange={setUsersPage}
+            label="Paginação de usuários"
+          />
+        </div>
+      ) : null}
+
+      <div className={`paper-panel overflow-x-auto ${usersPageCount > 1 ? "mt-4" : "mt-10"}`}>
         {isLoading ? (
           <p className="px-5 py-10 text-center text-sm text-muted-foreground">Carregando…</p>
         ) : users.length === 0 ? (
@@ -207,7 +259,7 @@ function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {visibleUsers.map((user) => (
                 <tr key={user.id} className="border-b border-border last:border-0">
                   <td className="px-5 py-4">
                     <p className="font-medium">{user.email}</p>
@@ -235,7 +287,7 @@ function AdminPage() {
                   <td className="px-3 py-4 text-right tabular-nums">{user.movements}</td>
                   <td className="px-5 py-4 text-right">
                     <button
-                      onClick={() => setSelected(user.id)}
+                      onClick={() => openUser(user.id)}
                       className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
                     >
                       Ver estoque
@@ -247,6 +299,17 @@ function AdminPage() {
           </table>
         )}
       </div>
+
+      {usersPageCount > 1 ? (
+        <div className="mt-6">
+          <PaginationNav
+            currentPage={currentUsersPage}
+            pageCount={usersPageCount}
+            onChange={setUsersPage}
+            label="Paginação de usuários"
+          />
+        </div>
+      ) : null}
 
       {selected ? (
         <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-foreground/25 px-6 py-10">
@@ -298,35 +361,49 @@ function AdminPage() {
                     Este usuário ainda não cadastrou produtos.
                   </p>
                 ) : (
-                  <table className="mt-3 w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        <th className="label-caps px-2 py-2 font-normal">Produto</th>
-                        <th className="label-caps px-2 py-2 text-right font-normal">Qtd.</th>
-                        <th className="label-caps px-2 py-2 text-right font-normal">Compra</th>
-                        <th className="label-caps px-2 py-2 text-right font-normal">Venda</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.data.products.map((product) => (
-                        <tr key={product.id} className="border-b border-border last:border-0">
-                          <td className="px-2 py-3">
-                            <p className="font-medium">{product.name}</p>
-                            <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums">
-                            {qty(product.quantity)}
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums">
-                            {currency(product.purchase_price)}
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums">
-                            {currency(product.sale_price)}
-                          </td>
+                  <>
+                    <table className="mt-3 w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="label-caps px-2 py-2 font-normal">Produto</th>
+                          <th className="label-caps px-2 py-2 text-right font-normal">Qtd.</th>
+                          <th className="label-caps px-2 py-2 text-right font-normal">Compra</th>
+                          <th className="label-caps px-2 py-2 text-right font-normal">Venda</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {visibleProducts.map((product) => (
+                          <tr key={product.id} className="border-b border-border last:border-0">
+                            <td className="px-2 py-3">
+                              <p className="font-medium">{product.name}</p>
+                              <p className="font-mono text-xs text-muted-foreground">
+                                {product.sku}
+                              </p>
+                            </td>
+                            <td className="px-2 py-3 text-right tabular-nums">
+                              {qty(product.quantity)}
+                            </td>
+                            <td className="px-2 py-3 text-right tabular-nums">
+                              {currency(product.purchase_price)}
+                            </td>
+                            <td className="px-2 py-3 text-right tabular-nums">
+                              {currency(product.sale_price)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {productsPageCount > 1 ? (
+                      <div className="mt-3">
+                        <PaginationNav
+                          currentPage={currentProductsPage}
+                          pageCount={productsPageCount}
+                          onChange={setProductsPage}
+                          label="Paginação de produtos do usuário"
+                        />
+                      </div>
+                    ) : null}
+                  </>
                 )}
 
                 <h3 className="label-caps mt-8">Movimentações</h3>
@@ -335,49 +412,63 @@ function AdminPage() {
                     Nenhuma movimentação registrada.
                   </p>
                 ) : (
-                  <table className="mt-3 w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left">
-                        <th className="label-caps px-2 py-2 font-normal">Quando</th>
-                        <th className="label-caps px-2 py-2 font-normal">Produto</th>
-                        <th className="label-caps px-2 py-2 font-normal">Tipo</th>
-                        <th className="label-caps px-2 py-2 font-normal">Origem</th>
-                        <th className="label-caps px-2 py-2 text-right font-normal">Qtd.</th>
-                        <th className="label-caps px-2 py-2 text-right font-normal">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.data.movements.map((movement) => (
-                        <tr
-                          key={movement.id}
-                          className={`border-b border-border last:border-0 ${
-                            movement.reversed_at ? "opacity-55" : ""
-                          }`}
-                        >
-                          <td className="px-2 py-3 whitespace-nowrap">
-                            {dateTime(movement.created_at)}
-                          </td>
-                          <td className={`px-2 py-3 ${movement.reversed_at ? "line-through" : ""}`}>
-                            {movement.products?.name ?? "—"}
-                          </td>
-                          <td
-                            className={`px-2 py-3 ${movement.kind === "in" ? "text-success" : "text-destructive"}`}
-                          >
-                            {movement.kind === "in" ? "Entrada" : "Saída"}
-                          </td>
-                          <td className="px-2 py-3 text-muted-foreground">
-                            {sourceLabel[movement.source]}
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums">
-                            {qty(movement.quantity)}
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums">
-                            {currency(movement.quantity * movement.unit_price)}
-                          </td>
+                  <>
+                    <table className="mt-3 w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="label-caps px-2 py-2 font-normal">Quando</th>
+                          <th className="label-caps px-2 py-2 font-normal">Produto</th>
+                          <th className="label-caps px-2 py-2 font-normal">Tipo</th>
+                          <th className="label-caps px-2 py-2 font-normal">Origem</th>
+                          <th className="label-caps px-2 py-2 text-right font-normal">Qtd.</th>
+                          <th className="label-caps px-2 py-2 text-right font-normal">Valor</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {visibleMovements.map((movement) => (
+                          <tr
+                            key={movement.id}
+                            className={`border-b border-border last:border-0 ${
+                              movement.reversed_at ? "opacity-55" : ""
+                            }`}
+                          >
+                            <td className="px-2 py-3 whitespace-nowrap">
+                              {dateTime(movement.created_at)}
+                            </td>
+                            <td
+                              className={`px-2 py-3 ${movement.reversed_at ? "line-through" : ""}`}
+                            >
+                              {movement.products?.name ?? "—"}
+                            </td>
+                            <td
+                              className={`px-2 py-3 ${movement.kind === "in" ? "text-success" : "text-destructive"}`}
+                            >
+                              {movement.kind === "in" ? "Entrada" : "Saída"}
+                            </td>
+                            <td className="px-2 py-3 text-muted-foreground">
+                              {sourceLabel[movement.source]}
+                            </td>
+                            <td className="px-2 py-3 text-right tabular-nums">
+                              {qty(movement.quantity)}
+                            </td>
+                            <td className="px-2 py-3 text-right tabular-nums">
+                              {currency(movement.quantity * movement.unit_price)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {movementsPageCount > 1 ? (
+                      <div className="mt-3">
+                        <PaginationNav
+                          currentPage={currentMovementsPage}
+                          pageCount={movementsPageCount}
+                          onChange={setMovementsPage}
+                          label="Paginação de movimentações do usuário"
+                        />
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </>
             ) : null}
