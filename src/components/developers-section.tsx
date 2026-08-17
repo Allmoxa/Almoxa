@@ -10,6 +10,7 @@ type SocialLink = {
 type Developer = {
   name: string;
   role: string;
+  bio: string;
   photo: string;
   links: SocialLink[];
 };
@@ -18,6 +19,7 @@ const developers: Developer[] = [
   {
     name: "Ricardo Real",
     role: "Full-stack",
+    bio: "Estudante de Ciência da Computação e Engenharia de Software",
     photo: "/team/ricardo.webp",
     links: [
       { label: "GitHub", href: "https://github.com/RicardoRealDev", icon: Github },
@@ -28,6 +30,7 @@ const developers: Developer[] = [
   {
     name: "Gabriel Rodrigues",
     role: "Full-stack",
+    bio: "Estudante de Engenharia de Software",
     photo: "/team/gabriel.webp",
     links: [
       { label: "GitHub", href: "https://github.com/GabaDevPro", icon: Github },
@@ -87,6 +90,7 @@ export function DevelopersSection() {
             <div>
               <p className="font-display text-xl">{dev.name}</p>
               <p className="text-sm text-muted-foreground">{dev.role}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground/80">{dev.bio}</p>
               <div className="mt-3 flex gap-3">
                 {dev.links.map((link) => (
                   <motion.a
