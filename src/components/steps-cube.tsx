@@ -37,33 +37,8 @@ const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube
 // da caixa por baixo, de onde os produtos parecem sair.
 const FLAP_TIP_CLOSED = 58;
 const FLAP_TIP_OPEN = 18;
-const flapTip = (openness: number) => FLAP_TIP_CLOSED - (FLAP_TIP_CLOSED - FLAP_TIP_OPEN) * openness;
-
-function HeadphonesIcon({ className, style }: { className?: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} style={style} fill="none">
-      <path d="M10 26v-4a14 14 0 0 1 28 0v4" stroke={INK} strokeWidth="3.5" strokeLinecap="round" />
-      <rect x="6" y="24" width="9" height="15" rx="4" fill={INK} />
-      <rect x="33" y="24" width="9" height="15" rx="4" fill={INK} />
-    </svg>
-  );
-}
-
-function ChipsBagIcon({ className, style }: { className?: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 40 48" className={className} style={style} fill="none">
-      <path d="M8 10 4 6M32 10l4-4" stroke={INK} strokeWidth="2.5" strokeLinecap="round" />
-      <path
-        d="M6 10h28l-3 34a3 3 0 0 1-3 3H12a3 3 0 0 1-3-3Z"
-        fill="#E7C24B"
-        stroke={INK}
-        strokeWidth="2.5"
-        strokeLinejoin="round"
-      />
-      <path d="M9 22h22M10 30h20" stroke={INK} strokeWidth="1.5" strokeOpacity="0.4" />
-    </svg>
-  );
-}
+const flapTip = (openness: number) =>
+  FLAP_TIP_CLOSED - (FLAP_TIP_CLOSED - FLAP_TIP_OPEN) * openness;
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
@@ -86,7 +61,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   // 0 na primeira face, 1 na última: a caixa vai abrindo aos poucos conforme
   // ela gira, em vez de pular pronta de fechada para aberta.
   const openProgress = index / Math.max(steps.length - 1, 1);
-  const atLastStep = index === steps.length - 1;
 
   const handleTest = () => {
     if (opening) return;
@@ -100,13 +74,18 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         className="relative mx-auto max-w-full"
-        style={{ perspective: 1400, width: "var(--cube-size)", height: "calc(var(--cube-size) + 40px)" }}
+        style={{
+          perspective: 1400,
+          width: "var(--cube-size)",
+          height: "calc(var(--cube-size) + 40px)",
+        }}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
           style={{
             opacity: opening ? 1 : 0,
-            background: "radial-gradient(circle at 50% 12%, rgba(255,250,235,0.95), transparent 62%)",
+            background:
+              "radial-gradient(circle at 50% 12%, rgba(255,250,235,0.95), transparent 62%)",
           }}
         />
 
@@ -122,18 +101,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           <RotateCw className="h-4 w-4" strokeWidth={2.5} />
         </button>
 
-        {atLastStep && !opening ? (
-          <div className="pointer-events-none absolute inset-x-0 top-[18%] z-[15] flex justify-center gap-7">
-            <HeadphonesIcon
-              className="h-10 w-10 animate-product-rise drop-shadow-md"
-              style={{ "--rise-x": "-20px", "--rise-rot": "-14deg", animationDelay: "60ms" } as CSSProperties}
-            />
-            <ChipsBagIcon
-              className="h-11 w-9 animate-product-rise drop-shadow-md"
-              style={{ "--rise-x": "22px", "--rise-rot": "11deg", animationDelay: "260ms" } as CSSProperties}
-            />
-          </div>
-        ) : null}
         <div
           className="relative transition-all duration-700 ease-in-out"
           style={{
@@ -156,7 +123,10 @@ export function StepsCube({ steps }: { steps: Step[] }) {
                 transform: `rotateY(${FACE_ANGLES[i]}deg) translateZ(${HALF})`,
               }}
             >
-              <p className="relative font-mono text-xs font-semibold tracking-widest" style={{ color: INK }}>
+              <p
+                className="relative font-mono text-xs font-semibold tracking-widest"
+                style={{ color: INK }}
+              >
                 {step.label}
               </p>
               <div className="relative -mx-3 py-2">
