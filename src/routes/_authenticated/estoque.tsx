@@ -9,6 +9,7 @@ import { ProductMovementDialog, type MovementValues } from "@/components/product
 import { ProductProfitDialog } from "@/components/product-profit-dialog";
 import { StoreStockView } from "@/components/store-stock-view";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { PaginationNav } from "@/components/ui/pagination-nav";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,7 +28,10 @@ export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({
     meta: [
       { title: "Estoque — Almoxá" },
-      { name: "description", content: "Veja quantidades, custo, preço de venda e lucro de cada produto do seu estoque." },
+      {
+        name: "description",
+        content: "Veja quantidades, custo, preço de venda e lucro de cada produto do seu estoque.",
+      },
       { property: "og:title", content: "Estoque — Almoxá" },
       {
         property: "og:description",
@@ -49,25 +53,7 @@ const productSchema = z.object({
 const inputClass =
   "w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring";
 
-const PAGE_SIZE = 25;
-
-/**
- * Páginas a mostrar no rodapé: as vizinhas da atual, mais a primeira e a última.
- * Acima de sete páginas o resto vira reticências, senão a linha de botões passa
- * a rolar de lado no celular.
- */
-function pageWindow(current: number, total: number): (number | "gap")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const around = [current - 1, current, current + 1].filter((page) => page > 1 && page < total);
-  const pages = [1, ...around, total];
-  const out: (number | "gap")[] = [];
-  pages.forEach((page, index) => {
-    const previous = pages[index - 1];
-    if (previous !== undefined && page - previous > 1) out.push("gap");
-    out.push(page);
-  });
-  return out;
-}
+const PAGE_SIZE = 15;
 
 function EstoquePage() {
   const { isComissionado, isLoading: loadingRole } = useUserRole();
@@ -169,7 +155,8 @@ function EstoqueDono() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
-      if (kind === "out" && quantity > product.quantity) throw new Error("Quantidade maior que o estoque disponível");
+      if (kind === "out" && quantity > product.quantity)
+        throw new Error("Quantidade maior que o estoque disponível");
       const { error } = await supabase.from("movements").insert({
         user_id: userId,
         product_id: product.id,
@@ -196,7 +183,10 @@ function EstoqueDono() {
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
 
-      if (values.purchase_price !== product.purchase_price || values.sale_price !== product.sale_price) {
+      if (
+        values.purchase_price !== product.purchase_price ||
+        values.sale_price !== product.sale_price
+      ) {
         const { error } = await supabase
           .from("products")
           .update({ purchase_price: values.purchase_price, sale_price: values.sale_price })
@@ -248,7 +238,9 @@ function EstoqueDono() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term));
+    return products.filter(
+      (p) => p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term),
+    );
   }, [products, search]);
 
   // A paginação é do lado do navegador de propósito: os totais no topo e a busca
@@ -285,8 +277,18 @@ function EstoqueDono() {
     >
       <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
         {[
-          { label: "Lucro hoje", value: realized.today, units: realized.unitsToday, hint: "desde a meia-noite" },
-          { label: "Lucro na semana", value: realized.week, units: realized.unitsWeek, hint: "últimos 7 dias" },
+          {
+            label: "Lucro hoje",
+            value: realized.today,
+            units: realized.unitsToday,
+            hint: "desde a meia-noite",
+          },
+          {
+            label: "Lucro na semana",
+            value: realized.week,
+            units: realized.unitsWeek,
+            hint: "últimos 7 dias",
+          },
         ].map((item) => (
           <div key={item.label} className="bg-card px-5 py-5">
             <p className="label-caps">{item.label}</p>
@@ -336,7 +338,12 @@ function EstoqueDono() {
             <label className="label-caps" htmlFor="name">
               Nome
             </label>
-            <input id="name" name="name" className={`mt-2 ${inputClass}`} placeholder="Camiseta preta P" />
+            <input
+              id="name"
+              name="name"
+              className={`mt-2 ${inputClass}`}
+              placeholder="Camiseta preta P"
+            />
           </div>
           <div>
             <label className="label-caps" htmlFor="sku">
@@ -412,6 +419,17 @@ function EstoqueDono() {
         </p>
       </div>
 
+      {pageCount > 1 ? (
+        <div className="mt-4">
+          <PaginationNav
+            currentPage={currentPage}
+            pageCount={pageCount}
+            onChange={setPage}
+            label="Paginação do estoque"
+          />
+        </div>
+      ) : null}
+
       <div className="paper-panel mt-4 overflow-x-auto">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10">
@@ -444,8 +462,12 @@ function EstoqueDono() {
                       <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
                     </td>
                     <td className="px-3 py-4 text-right tabular-nums">{qty(product.quantity)}</td>
-                    <td className="px-3 py-4 text-right tabular-nums">{currency(product.purchase_price)}</td>
-                    <td className="px-3 py-4 text-right tabular-nums">{currency(product.sale_price)}</td>
+                    <td className="px-3 py-4 text-right tabular-nums">
+                      {currency(product.purchase_price)}
+                    </td>
+                    <td className="px-3 py-4 text-right tabular-nums">
+                      {currency(product.sale_price)}
+                    </td>
                     <td
                       className={`px-3 py-4 text-right tabular-nums ${profit < 0 ? "text-destructive" : "text-success"}`}
                     >
@@ -479,7 +501,8 @@ function EstoqueDono() {
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm(`Remover ${product.name}?`)) removeProduct.mutate(product.id);
+                            if (confirm(`Remover ${product.name}?`))
+                              removeProduct.mutate(product.id);
                           }}
                           className="text-xs text-muted-foreground transition-colors hover:text-destructive"
                         >
@@ -494,53 +517,6 @@ function EstoqueDono() {
           </table>
         )}
       </div>
-
-      {pageCount > 1 ? (
-        <nav
-          aria-label="Paginação do estoque"
-          className="mt-6 flex items-center justify-center gap-1.5"
-        >
-          <button
-            type="button"
-            onClick={() => setPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            Anterior
-          </button>
-
-          {pageWindow(currentPage, pageCount).map((item, index) =>
-            item === "gap" ? (
-              <span key={`gap-${index}`} className="px-1.5 text-sm text-muted-foreground">
-                …
-              </span>
-            ) : (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setPage(item)}
-                aria-current={item === currentPage ? "page" : undefined}
-                className={`min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors ${
-                  item === currentPage
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border-strong text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {item}
-              </button>
-            ),
-          )}
-
-          <button
-            type="button"
-            onClick={() => setPage(currentPage + 1)}
-            disabled={currentPage === pageCount}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            Próxima
-          </button>
-        </nav>
-      ) : null}
 
       {moving ? (
         <ProductMovementDialog

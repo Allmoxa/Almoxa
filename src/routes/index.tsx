@@ -2,6 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepsCube } from "@/components/steps-cube";
+import { SmoothScroll } from "@/components/smooth-scroll";
+import { AosInit } from "@/components/aos-init";
+import { TextReveal } from "@/components/text-reveal";
+import { DevelopersSection } from "@/components/developers-section";
+import { RevealSafetyNet } from "@/components/reveal-safety-net";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,10 +56,17 @@ function Landing() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
+      <SmoothScroll />
+      <AosInit />
+      <RevealSafetyNet />
+
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <span className="font-display text-xl">Almoxá</span>
-        <Link to="/auth" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+        <Link
+          to="/auth"
+          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
           Entrar
         </Link>
       </header>
@@ -62,26 +74,40 @@ function Landing() {
       <main className="mx-auto max-w-5xl px-6">
         <section className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="label-caps">Controle de entrada e saída</p>
-            <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
-              Seu estoque atualizado com uma foto.
-            </h1>
-            <p className="mt-6 max-w-xl text-base text-muted-foreground">
-              Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código, quantidade e
-              preços entram sozinhos — e o lucro de cada item aparece calculado.
+            <p className="label-caps" data-aos="fade-up">
+              Controle de entrada e saída
+            </p>
+            <TextReveal
+              as="h1"
+              text="Seu estoque atualizado com uma foto."
+              className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl"
+            />
+            <p
+              className="mt-6 max-w-xl text-base text-muted-foreground"
+              data-aos="fade-up"
+              data-aos-delay="100"
+            >
+              Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
+              quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
             <Link
               to="/auth"
               className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              data-aos="fade-up"
+              data-aos-delay="200"
             >
               Entrar na conta
             </Link>
           </div>
 
-          <StepsCube steps={steps} />
+          <div data-aos="fade-left" data-aos-delay="150">
+            <StepsCube steps={steps} />
+          </div>
         </section>
 
-        <footer className="rule-top mt-px py-10 text-sm text-muted-foreground">
+        <DevelopersSection />
+
+        <footer className="rule-top mt-px py-10 text-sm text-muted-foreground" data-aos="fade-up">
           Almoxá — controle de estoque simples para quem compra e revende.
         </footer>
       </main>

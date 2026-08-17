@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireOwner } from "@/lib/guards";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { PaginationNav } from "@/components/ui/pagination-nav";
 import { supabase } from "@/integrations/supabase/client";
 import { currency, dateTime, qty, type Movement } from "@/lib/inventory";
+
+const PAGE_SIZE = 15;
 
 export const Route = createFileRoute("/_authenticated/movimentacoes")({
   head: () => ({
@@ -40,6 +43,7 @@ const kindLabel = (kind: Movement["kind"]) => (kind === "in" ? "entrada" : "saí
 function MovimentacoesPage() {
   const queryClient = useQueryClient();
   const [reversing, setReversing] = useState<Movement | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data: movements = [], isLoading } = useQuery({
     queryKey: ["movements"],
@@ -102,11 +106,33 @@ function MovimentacoesPage() {
     onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao estornar"),
   });
 
+  const pageCount = Math.max(1, Math.ceil(movements.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const firstIndex = (currentPage - 1) * PAGE_SIZE;
+  const visible = useMemo(
+    () => movements.slice(firstIndex, firstIndex + PAGE_SIZE),
+    [movements, firstIndex],
+  );
+
   return (
     <AppShell
       title="Movimentações"
       description="Toda entrada e saída registrada, com a origem de cada lançamento. Lançou errado? Estorne — o histórico guarda os dois."
     >
+      {pageCount > 1 ? (
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <p className="label-caps">
+            {firstIndex + 1}–{firstIndex + visible.length} de {movements.length} movimentações
+          </p>
+          <PaginationNav
+            currentPage={currentPage}
+            pageCount={pageCount}
+            onChange={setPage}
+            label="Paginação das movimentações"
+          />
+        </div>
+      ) : null}
+
       <div className="paper-panel overflow-x-auto">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10">
@@ -132,7 +158,7 @@ function MovimentacoesPage() {
               </tr>
             </thead>
             <tbody>
-              {movements.map((movement) => {
+              {visible.map((movement) => {
                 const estornado = !!movement.reversed_at;
                 const ehEstorno = movement.source === "reversal";
                 return (
@@ -195,6 +221,17 @@ function MovimentacoesPage() {
           </table>
         )}
       </div>
+
+      {pageCount > 1 ? (
+        <div className="mt-6">
+          <PaginationNav
+            currentPage={currentPage}
+            pageCount={pageCount}
+            onChange={setPage}
+            label="Paginação das movimentações"
+          />
+        </div>
+      ) : null}
 
       {reversing ? (
         <ReversalDialog
