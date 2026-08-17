@@ -49,9 +49,22 @@ const cardVariants: Variants = {
   }),
 };
 
+/** Tira de fita de embalagem, tipo lacrando a caixa. Puramente decorativa. */
+function TapeStrip({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`pointer-events-none absolute h-14 w-28 bg-[#EFE3CB]/90 shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${className}`}
+    />
+  );
+}
+
 export function DevelopersSection({ children }: { children?: ReactNode }) {
   return (
     <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-t-[2.5rem] bg-background">
+      <TapeStrip className="-top-6 left-10 -rotate-45 sm:left-20" />
+      <TapeStrip className="-top-6 right-10 rotate-45 sm:right-20" />
+
       <div className="mx-auto max-w-5xl px-6 py-24">
         <motion.p
           className="label-caps"
