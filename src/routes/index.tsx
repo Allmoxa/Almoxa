@@ -75,7 +75,7 @@ function Landing() {
 
       <main className="mx-auto max-w-5xl px-6">
         <section className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]">
-          <div className="relative z-20">
+          <div className="relative z-20" data-tape-hero="true">
             <p className="label-caps" data-aos="fade-up">
               Controle de entrada e saída
             </p>
@@ -100,7 +100,12 @@ function Landing() {
             </Link>
           </div>
 
-          <div className="relative z-20" data-aos="fade-left" data-aos-delay="150">
+          <div
+            className="relative z-20"
+            data-aos="fade-left"
+            data-aos-delay="150"
+            data-tape-box="true"
+          >
             <StepsCube steps={steps} />
           </div>
         </section>
