@@ -6,6 +6,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { AosInit } from "@/components/aos-init";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
+import { ContactForm } from "@/components/contact-form";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -101,6 +102,8 @@ function Landing() {
             <StepsCube steps={steps} />
           </div>
         </section>
+
+        <ContactForm />
 
         <DevelopersSection>
           <footer className="text-sm text-muted-foreground" data-aos="fade-up">
