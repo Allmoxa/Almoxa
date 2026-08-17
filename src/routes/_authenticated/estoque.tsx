@@ -47,7 +47,7 @@ const productSchema = z.object({
 const inputClass =
   "w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring";
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 15;
 
 /**
  * Páginas a mostrar no rodapé: as vizinhas da atual, mais a primeira e a última.
@@ -65,6 +65,61 @@ function pageWindow(current: number, total: number): (number | "gap")[] {
     out.push(page);
   });
   return out;
+}
+
+function PaginationNav({
+  currentPage,
+  pageCount,
+  onChange,
+}: {
+  currentPage: number;
+  pageCount: number;
+  onChange: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+  return (
+    <nav aria-label="Paginação do estoque" className="flex items-center justify-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => onChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+      >
+        Anterior
+      </button>
+
+      {pageWindow(currentPage, pageCount).map((item, index) =>
+        item === "gap" ? (
+          <span key={`gap-${index}`} className="px-1.5 text-sm text-muted-foreground">
+            …
+          </span>
+        ) : (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            aria-current={item === currentPage ? "page" : undefined}
+            className={`min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors ${
+              item === currentPage
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border-strong text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {item}
+          </button>
+        ),
+      )}
+
+      <button
+        type="button"
+        onClick={() => onChange(currentPage + 1)}
+        disabled={currentPage === pageCount}
+        className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+      >
+        Próxima
+      </button>
+    </nav>
+  );
 }
 
 function EstoquePage() {
@@ -400,6 +455,12 @@ function EstoquePage() {
         </p>
       </div>
 
+      {pageCount > 1 ? (
+        <div className="mt-4">
+          <PaginationNav currentPage={currentPage} pageCount={pageCount} onChange={setPage} />
+        </div>
+      ) : null}
+
       <div className="paper-panel mt-4 overflow-x-auto">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10">
@@ -484,50 +545,9 @@ function EstoquePage() {
       </div>
 
       {pageCount > 1 ? (
-        <nav
-          aria-label="Paginação do estoque"
-          className="mt-6 flex items-center justify-center gap-1.5"
-        >
-          <button
-            type="button"
-            onClick={() => setPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            Anterior
-          </button>
-
-          {pageWindow(currentPage, pageCount).map((item, index) =>
-            item === "gap" ? (
-              <span key={`gap-${index}`} className="px-1.5 text-sm text-muted-foreground">
-                …
-              </span>
-            ) : (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setPage(item)}
-                aria-current={item === currentPage ? "page" : undefined}
-                className={`min-w-9 rounded-md border px-2.5 py-1.5 text-sm tabular-nums transition-colors ${
-                  item === currentPage
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border-strong text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                {item}
-              </button>
-            ),
-          )}
-
-          <button
-            type="button"
-            onClick={() => setPage(currentPage + 1)}
-            disabled={currentPage === pageCount}
-            className="rounded-md border border-border-strong px-3 py-1.5 text-sm transition-colors hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
-          >
-            Próxima
-          </button>
-        </nav>
+        <div className="mt-6">
+          <PaginationNav currentPage={currentPage} pageCount={pageCount} onChange={setPage} />
+        </div>
       ) : null}
 
       {moving ? (
