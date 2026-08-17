@@ -15,8 +15,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 
-// oi — marcador para forçar um deploy novo e confirmar qual build está no ar.
-
 // Ordem do ciclo da barraca: ver o que tem, planejar a compra, dar entrada,
 // vender, conferir.
 const nav = [
