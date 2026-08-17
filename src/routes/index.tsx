@@ -7,7 +7,6 @@ import { AosInit } from "@/components/aos-init";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
-import { TapeIntro } from "@/components/tape-intro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -61,9 +60,8 @@ function Landing() {
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
-      <TapeIntro />
 
-      <header className="relative z-20 mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <span className="font-display text-xl">Almoxá</span>
         <Link
           to="/auth"
@@ -75,7 +73,7 @@ function Landing() {
 
       <main className="mx-auto max-w-5xl px-6">
         <section className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]">
-          <div className="relative z-20" data-tape-hero="true">
+          <div>
             <p className="label-caps" data-aos="fade-up">
               Controle de entrada e saída
             </p>
@@ -100,12 +98,7 @@ function Landing() {
             </Link>
           </div>
 
-          <div
-            className="relative z-20"
-            data-aos="fade-left"
-            data-aos-delay="150"
-            data-tape-box="true"
-          >
+          <div data-aos="fade-left" data-aos-delay="150">
             <StepsCube steps={steps} />
           </div>
         </section>
