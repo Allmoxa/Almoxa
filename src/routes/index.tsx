@@ -105,11 +105,11 @@ function Landing() {
           </div>
         </section>
 
-        <DevelopersSection />
-
-        <footer className="rule-top mt-px py-10 text-sm text-muted-foreground" data-aos="fade-up">
-          Almoxá — controle de estoque simples para quem compra e revende.
-        </footer>
+        <DevelopersSection>
+          <footer className="text-sm text-muted-foreground" data-aos="fade-up">
+            Almoxá — controle de estoque simples para quem compra e revende.
+          </footer>
+        </DevelopersSection>
       </main>
     </div>
   );
