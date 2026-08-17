@@ -19,7 +19,14 @@ export function SmoothScroll() {
     gsap.ticker.add(onTick);
     gsap.ticker.lagSmoothing(0);
 
+    // Lenis muda como o scroll se comporta assim que monta; os triggers já
+    // registrados por outros componentes podem ter medido posições antes
+    // disso. Um refresh depois de estabilizar garante que estejam corretos.
+    const refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 200);
+    document.fonts?.ready.then(() => ScrollTrigger.refresh());
+
     return () => {
+      window.clearTimeout(refreshTimer);
       gsap.ticker.remove(onTick);
       lenis.destroy();
     };

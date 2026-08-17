@@ -6,6 +6,7 @@ import { SmoothScroll } from "@/components/smooth-scroll";
 import { AosInit } from "@/components/aos-init";
 import { TextReveal } from "@/components/text-reveal";
 import { DevelopersSection } from "@/components/developers-section";
+import { RevealSafetyNet } from "@/components/reveal-safety-net";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,6 +59,7 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <SmoothScroll />
       <AosInit />
+      <RevealSafetyNet />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <span className="font-display text-xl">Almoxá</span>
