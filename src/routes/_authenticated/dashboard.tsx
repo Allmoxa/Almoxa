@@ -7,7 +7,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { supabase } from "@/integrations/supabase/client";
-import { currency, dateTime, qty, type Movement, type Product } from "@/lib/inventory";
+import { currency, dateTime, isRealSale, qty, type Movement, type Product } from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -41,7 +41,9 @@ function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("movements")
-        .select("id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, products(name, sku)")
+        .select(
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, reverses_id, reversed_at, products(name, sku)",
+        )
         .order("created_at", { ascending: false })
         .limit(300);
       if (error) throw error;
@@ -134,8 +136,11 @@ function useDashboardStats(products: Product[], movements: Movement[]) {
 
     const totalInvested = products.reduce((sum, p) => sum + p.purchase_price * p.quantity, 0);
 
-    // Ajuste de estoque é saída sem venda: entra no histórico, mas não em ticket nem lucro.
-    const outMovements = movements.filter((m) => m.kind === "out" && m.source !== "adjustment");
+    // Ajuste, estorno e venda estornada entram no histórico, mas não em ticket,
+    // lucro, ranking nem no cálculo de produto parado. O gráfico de fluxo abaixo
+    // é o único que os mantém: lá o assunto é mercadoria que entrou e saiu de
+    // fato, e o estorno movimenta a prateleira como qualquer outro lançamento.
+    const outMovements = movements.filter(isRealSale);
     const avgTicket = outMovements.length
       ? outMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) / outMovements.length
       : 0;

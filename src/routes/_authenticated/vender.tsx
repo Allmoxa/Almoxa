@@ -9,7 +9,14 @@ import { SaleBuilderDialog, type BuiltSaleLine } from "@/components/sale-builder
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { extractSale, type ExtractedSaleItem } from "@/lib/sale-intake.functions";
-import { currency, qty, splitReference, splitSaleTotal, type Product } from "@/lib/inventory";
+import {
+  currency,
+  qty,
+  splitReference,
+  splitSaleTotal,
+  NON_SALE_SOURCES_FILTER,
+  type Product,
+} from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/vender")({
   head: () => ({
@@ -107,7 +114,8 @@ function VenderPage() {
         .from("movements")
         .select("product_id, quantity")
         .eq("kind", "out")
-        .neq("source", "adjustment")
+        .not("source", "in", NON_SALE_SOURCES_FILTER)
+        .is("reversed_at", null)
         .gte("created_at", since);
       if (error) throw error;
       const totals = new Map<string, number>();
