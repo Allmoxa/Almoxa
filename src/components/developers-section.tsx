@@ -66,6 +66,8 @@ export function DevelopersSection() {
     <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-[2.5rem] bg-background">
       <TapeStrip className="-top-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
       <TapeStrip className="-top-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
+      <TapeStrip className="-bottom-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
+      <TapeStrip className="-bottom-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
 
       <div className="mx-auto max-w-5xl px-6 py-24">
         <motion.p
