@@ -44,6 +44,10 @@ export type Movement = {
   source: MovementSource;
   note: string | null;
   created_at: string;
+  /** Quem apertou o botão — pode ser um comissionado da loja, não o dono. */
+  created_by: string | null;
+  /** Resolvido pelo painel do onisciente, que alcança auth.users. */
+  created_by_email?: string | null;
   /** Preenchido na linha do estorno: o lançamento que ele desfaz. */
   reverses_id: string | null;
   /** Preenchido na linha do original assim que alguém a estorna. */

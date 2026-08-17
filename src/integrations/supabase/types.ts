@@ -16,7 +16,9 @@ export type Database = {
     Tables: {
       movements: {
         Row: {
+          commission_rate: number
           created_at: string
+          created_by: string | null
           id: string
           kind: string
           note: string | null
@@ -30,7 +32,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          commission_rate?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           kind: string
           note?: string | null
@@ -44,7 +48,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          commission_rate?: number
           created_at?: string
+          created_by?: string | null
           id?: string
           kind?: string
           note?: string | null
@@ -117,19 +123,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          commission_rate: number
           role: Database["public"]["Enums"]["app_role"]
+          store_owner_id: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          commission_rate?: number
           role?: Database["public"]["Enums"]["app_role"]
+          store_owner_id?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          commission_rate?: number
           role?: Database["public"]["Enums"]["app_role"]
+          store_owner_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -146,13 +158,69 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: {
+      is_onisciente: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      current_store_owner: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      store_products: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          sku: string
+          quantity: number
+          sale_price: number
+        }[]
+      }
+      store_members: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+        }[]
+      }
+      operating_store: {
+        Args: Record<PropertyKey, never>
+        Returns: string | null
+      }
+      enter_store: {
+        Args: { _store_owner_id: string }
+        Returns: undefined
+      }
+      leave_store: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      current_context: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          store_owner_id: string | null
+          store_email: string | null
+          entered: boolean
+        }[]
+      }
+      store_team: {
+        Args: { _since?: string | null }
+        Returns: {
+          id: string
+          email: string
+          commission_rate: number
+          sold_total: number
+          commission_total: number
+          sales_count: number
+        }[]
+      }
+      set_commission_rate: {
+        Args: { _member_id: string; _rate: number }
+        Returns: undefined
+      }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "onisciente" | "admin" | "comissionado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -280,7 +348,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["onisciente", "admin", "comissionado"],
     },
   },
 } as const
