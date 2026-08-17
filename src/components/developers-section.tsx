@@ -1,6 +1,5 @@
 import { motion, type Variants } from "framer-motion";
 import { Github, Instagram, Linkedin } from "lucide-react";
-import type { ReactNode } from "react";
 
 type SocialLink = {
   label: string;
@@ -62,9 +61,9 @@ function TapeStrip({ className }: { className: string }) {
   );
 }
 
-export function DevelopersSection({ children }: { children?: ReactNode }) {
+export function DevelopersSection() {
   return (
-    <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-t-[2.5rem] bg-background">
+    <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-[2.5rem] bg-background">
       <TapeStrip className="-top-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
       <TapeStrip className="-top-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
 
@@ -132,14 +131,6 @@ export function DevelopersSection({ children }: { children?: ReactNode }) {
             </motion.div>
           ))}
         </div>
-
-        {children ? (
-          <div className="rule-top relative mt-16 pt-8">
-            <TapeStrip className="-top-4 left-10 h-8 w-16 rotate-3 sm:left-16" />
-            <TapeStrip className="-top-4 right-10 h-8 w-16 -rotate-3 sm:right-16" />
-            {children}
-          </div>
-        ) : null}
       </div>
     </section>
   );
