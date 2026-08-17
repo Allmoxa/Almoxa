@@ -12,7 +12,7 @@ import { useEffect } from "react";
 export function RevealSafetyNet() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      document.querySelectorAll<HTMLElement>("[data-aos], .reveal-word").forEach((el) => {
+      document.querySelectorAll<HTMLElement>("[data-aos]").forEach((el) => {
         // Uma transição CSS "presa" no meio (ex.: aba em segundo plano pausando
         // o compositor) tem prioridade maior que !important normal — cancelar
         // a animação antes é o que garante que o estilo forçado realmente vale.

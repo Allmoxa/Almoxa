@@ -337,34 +337,3 @@
 @utility animate-soft-pulse {
   animation: soft-pulse 2.4s ease-out infinite;
 }
-
-@keyframes product-rise {
-  0% {
-    opacity: 0;
-    transform: translate(var(--rise-x, 0px), 10px) scale(0.55) rotate(var(--rise-rot, 0deg));
-  }
-  55% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translate(var(--rise-x, 0px), -48px) scale(1) rotate(var(--rise-rot, 0deg));
-  }
-}
-
-@utility animate-product-rise {
-  animation: product-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@utility reveal-word-mask {
-  display: inline-block;
-  overflow: hidden;
-  vertical-align: top;
-}
-
-@utility reveal-word {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(110%);
-  will-change: transform, opacity;
-}
