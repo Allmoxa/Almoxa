@@ -180,6 +180,16 @@
   box-shadow: var(--shadow-paper);
 }
 
+/*
+ * Textura de papel: ruído fino (SVG feTurbulence, seamless via stitchTiles,
+ * sem precisar de imagem) em multiply sobre o --background já quente. Baixo
+ * contraste de propósito — é grão, não deve competir com o texto por cima.
+ */
+@utility paper-texture-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.35'/%3E%3C/svg%3E");
+  background-blend-mode: multiply;
+}
+
 @keyframes box-spin {
   from {
     transform: rotateX(-28deg) rotateY(0deg);
