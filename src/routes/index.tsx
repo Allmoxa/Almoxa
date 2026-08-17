@@ -7,7 +7,7 @@ import { AosInit } from "@/components/aos-init";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
-import { TapeIntro } from "@/components/tape-intro";
+import { TapeVideoIntro } from "@/components/tape-video-intro";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -61,7 +61,7 @@ function Landing() {
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
-      <TapeIntro />
+      <TapeVideoIntro />
 
       <header className="relative z-20 mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <span className="font-display text-xl">Almoxá</span>
