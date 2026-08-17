@@ -78,12 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Almoxá — estoque por foto ou nota de compra" },
       {
         name: "description",
-        content: "Controle a entrada e saída de produtos fotografando o item ou importando a nota de compra.",
+        content:
+          "Controle a entrada e saída de produtos fotografando o item ou importando a nota de compra.",
       },
       { property: "og:title", content: "Almoxá — estoque por foto ou nota de compra" },
       {
         property: "og:description",
-        content: "Controle a entrada e saída de produtos fotografando o item ou importando a nota de compra.",
+        content:
+          "Controle a entrada e saída de produtos fotografando o item ou importando a nota de compra.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -122,7 +124,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>
@@ -151,4 +153,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
