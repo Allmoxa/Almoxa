@@ -48,6 +48,7 @@ const sourceLabel: Record<Movement["source"], string> = {
   photo: "Foto",
   document: "Documento",
   adjustment: "Ajuste",
+  reversal: "Estorno",
 };
 
 function AdminPage() {
@@ -347,11 +348,18 @@ function AdminPage() {
                     </thead>
                     <tbody>
                       {detail.data.movements.map((movement) => (
-                        <tr key={movement.id} className="border-b border-border last:border-0">
+                        <tr
+                          key={movement.id}
+                          className={`border-b border-border last:border-0 ${
+                            movement.reversed_at ? "opacity-55" : ""
+                          }`}
+                        >
                           <td className="px-2 py-3 whitespace-nowrap">
                             {dateTime(movement.created_at)}
                           </td>
-                          <td className="px-2 py-3">{movement.products?.name ?? "—"}</td>
+                          <td className={`px-2 py-3 ${movement.reversed_at ? "line-through" : ""}`}>
+                            {movement.products?.name ?? "—"}
+                          </td>
                           <td
                             className={`px-2 py-3 ${movement.kind === "in" ? "text-success" : "text-destructive"}`}
                           >
