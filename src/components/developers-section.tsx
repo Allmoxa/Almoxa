@@ -1,5 +1,6 @@
 import { motion, type Variants } from "framer-motion";
 import { Github, Instagram, Linkedin } from "lucide-react";
+import type { ReactNode } from "react";
 
 type SocialLink = {
   label: string;
@@ -48,7 +49,7 @@ const cardVariants: Variants = {
   }),
 };
 
-export function DevelopersSection() {
+export function DevelopersSection({ children }: { children?: ReactNode }) {
   return (
     <section className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-t-[2.5rem] bg-background">
       <div className="mx-auto max-w-5xl px-6 py-24">
@@ -112,6 +113,8 @@ export function DevelopersSection() {
             </motion.div>
           ))}
         </div>
+
+        {children ? <div className="rule-top mt-16 pt-8">{children}</div> : null}
       </div>
     </section>
   );
