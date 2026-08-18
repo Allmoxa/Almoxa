@@ -7,6 +7,7 @@ import { AosInit } from "@/components/aos-init";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
+import { ScrollFade } from "@/components/scroll-fade";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -62,7 +63,7 @@ function Landing() {
       <RevealSafetyNet />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <span className="font-logo text-3xl font-semibold">Almoxá</span>
+        <ScrollFade className="font-logo text-3xl font-semibold">Almoxá</ScrollFade>
         <Link
           to="/auth"
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
