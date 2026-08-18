@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useContactParallax } from "@/hooks/use-contact-parallax";
 import { sendContactMessage } from "@/lib/contact.functions";
 
 const inputClass =
@@ -9,6 +9,7 @@ const inputClass =
 
 export function ContactForm() {
   const send = useServerFn(sendContactMessage);
+  const { sectionRef, textGroupRef, formRef } = useContactParallax();
 
   const mutation = useMutation({
     mutationFn: (values: { name: string; email: string; message: string; website: string }) =>
@@ -18,38 +19,22 @@ export function ContactForm() {
   });
 
   return (
-    <section id="contato" className="border-b border-border py-24">
+    <section id="contato" ref={sectionRef} className="border-b border-border py-24">
       <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
-        <div>
-          <motion.p
-            className="label-caps"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.6 }}
-            transition={{ duration: 0.5 }}
-          >
-            Fale conosco
-          </motion.p>
-          <motion.h2
-            className="mt-4 max-w-sm text-4xl leading-[1.05] sm:text-5xl"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.6 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-          >
+        <div ref={textGroupRef} style={{ willChange: "transform" }}>
+          <p className="label-caps">Fale conosco</p>
+          <h2 className="mt-4 max-w-sm text-4xl leading-[1.05] sm:text-5xl">
             Dúvida, sugestão ou proposta?
-          </motion.h2>
+          </h2>
           <p className="mt-4 max-w-sm text-sm text-muted-foreground">
             Manda uma mensagem — a resposta vai direto pro seu e-mail.
           </p>
         </div>
 
-        <motion.form
+        <form
+          ref={formRef}
           className="paper-panel grid gap-4 p-6 sm:grid-cols-2"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.5 }}
+          style={{ willChange: "transform" }}
           onSubmit={(event) => {
             event.preventDefault();
             // event.currentTarget vira null depois que o handler retorna, então
@@ -133,7 +118,7 @@ export function ContactForm() {
               {mutation.isPending ? "Enviando…" : "Enviar mensagem"}
             </button>
           </div>
-        </motion.form>
+        </form>
       </div>
     </section>
   );
