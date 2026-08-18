@@ -19,7 +19,7 @@ type Amplitude = {
 
 const DESKTOP: Amplitude = {
   titleX: -60,
-  titleOpacity: 0.75,
+  titleOpacity: 0,
   cardX: 85,
   cardRotation: 1,
   cardTapeX: 6,
@@ -30,7 +30,7 @@ const DESKTOP: Amplitude = {
 };
 const TABLET: Amplitude = {
   titleX: -39,
-  titleOpacity: 0.75,
+  titleOpacity: 0,
   cardX: 55,
   cardRotation: 1,
   cardTapeX: 4,
@@ -41,7 +41,7 @@ const TABLET: Amplitude = {
 };
 const MOBILE: Amplitude = {
   titleX: -12,
-  titleOpacity: 0.85,
+  titleOpacity: 0,
   cardX: 14,
   cardRotation: 0.5,
   cardTapeX: 4,
@@ -112,14 +112,14 @@ export function useTeamParallax() {
         )
           .fromTo(
             card1,
-            { x: -amp.cardX, rotation: -amp.cardRotation },
-            { x: 0, rotation: 0, ease: "none" },
+            { x: -amp.cardX, rotation: -amp.cardRotation, opacity: 0 },
+            { x: 0, rotation: 0, opacity: 1, ease: "none" },
             0.1,
           )
           .fromTo(
             card2,
-            { x: amp.cardX, rotation: amp.cardRotation },
-            { x: 0, rotation: 0, ease: "none" },
+            { x: amp.cardX, rotation: amp.cardRotation, opacity: 0 },
+            { x: 0, rotation: 0, opacity: 1, ease: "none" },
             0.18,
           )
           .fromTo(card1Tape, { x: -amp.cardTapeX }, { x: 0, ease: "none" }, 0.13)

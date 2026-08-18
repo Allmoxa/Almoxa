@@ -12,9 +12,9 @@ type Amplitude = {
   formY: number;
 };
 
-const DESKTOP: Amplitude = { textX: -50, textOpacity: 0.8, formX: 65, formY: 10 };
-const TABLET: Amplitude = { textX: -32, textOpacity: 0.8, formX: 42, formY: 7 };
-const MOBILE: Amplitude = { textX: -12, textOpacity: 0.88, formX: 14, formY: 6 };
+const DESKTOP: Amplitude = { textX: -50, textOpacity: 0, formX: 65, formY: 10 };
+const TABLET: Amplitude = { textX: -32, textOpacity: 0, formX: 42, formY: 7 };
+const MOBILE: Amplitude = { textX: -12, textOpacity: 0, formX: 14, formY: 6 };
 
 /**
  * contactParallaxTimeline — entrada mais calma que a da seção "Quem fez":
@@ -53,7 +53,12 @@ export function useContactParallax() {
           { x: amp.textX, opacity: amp.textOpacity },
           { x: 0, opacity: 1, ease: "none" },
           0,
-        ).fromTo(form, { x: amp.formX, y: amp.formY }, { x: 0, y: 0, ease: "none" }, 0.15);
+        ).fromTo(
+          form,
+          { x: amp.formX, y: amp.formY, opacity: 0 },
+          { x: 0, y: 0, opacity: 1, ease: "none" },
+          0.15,
+        );
 
         return () => {
           tl.scrollTrigger?.kill();
