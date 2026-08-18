@@ -345,3 +345,117 @@
 @utility animate-soft-pulse {
   animation: soft-pulse 2.4s ease-out infinite;
 }
+
+/*
+ * Adesivos decorativos da tela de login — "Almoxá 01", "Abra aqui",
+ * "Conferido", "Manuseie com cuidado". Ancorados aos cantos/laterais do
+ * wrapper .login-stickers (position: absolute; inset: 0), que por sua vez
+ * não intercepta cliques (pointer-events: none) — só cada <img> reabilita
+ * pointer-events pra reagir ao hover sem cobrir o resto da página.
+ */
+.login-stickers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.login-sticker {
+  position: absolute;
+  width: var(--sticker-width);
+  height: auto;
+  transform: rotate(var(--rotation));
+  transform-origin: center;
+  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 12%));
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 300ms ease;
+  cursor: default;
+  user-select: none;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.login-sticker:hover {
+  transform: translateY(-4px) rotate(calc(var(--rotation) * 0.35)) scale(1.12);
+  filter: drop-shadow(0 14px 16px rgb(0 0 0 / 20%));
+  z-index: 5;
+}
+
+.login-sticker--almoxa {
+  --sticker-width: 230px;
+  --rotation: 7deg;
+  top: 28px;
+  right: 28px;
+}
+
+.login-sticker--abra {
+  --sticker-width: 260px;
+  --rotation: -5deg;
+  top: 46%;
+  left: 24px;
+}
+
+.login-sticker--conferido {
+  --sticker-width: 150px;
+  --rotation: -8deg;
+  bottom: 28px;
+  left: 28px;
+}
+
+.login-sticker--manuseie {
+  --sticker-width: 190px;
+  --rotation: 4deg;
+  bottom: 28px;
+  right: 28px;
+}
+
+/* Sem hover real (touch): tira o crescimento, mantém só a rotação de repouso. */
+@media (hover: none) {
+  .login-sticker:hover {
+    transform: rotate(var(--rotation));
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 12%));
+  }
+}
+
+@media (max-width: 899px) {
+  .login-sticker--almoxa {
+    --sticker-width: 161px;
+  }
+  .login-sticker--abra {
+    --sticker-width: 182px;
+  }
+  .login-sticker--conferido {
+    --sticker-width: 105px;
+  }
+  .login-sticker--manuseie {
+    --sticker-width: 133px;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-sticker--abra,
+  .login-sticker--manuseie {
+    display: none;
+  }
+  .login-sticker--almoxa {
+    --sticker-width: 90px;
+    top: 16px;
+    right: 16px;
+  }
+  .login-sticker--conferido {
+    --sticker-width: 70px;
+    bottom: 16px;
+    left: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-sticker {
+    transition: filter 300ms ease;
+  }
+  .login-sticker:hover {
+    transform: rotate(var(--rotation));
+    filter: drop-shadow(0 10px 12px rgb(0 0 0 / 16%));
+  }
+}
