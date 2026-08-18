@@ -8,7 +8,7 @@ import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
-import { LogoBracket } from "@/components/logo-bracket";
+import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { MagneticLink } from "@/components/magnetic-button";
 import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
 
@@ -67,7 +67,7 @@ function Landing() {
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <ScrollFade className="font-logo text-3xl font-semibold">
-          <LogoBracket>Almoxá</LogoBracket>
+          <LogoRefreshButton />
         </ScrollFade>
 
         <nav className="hidden items-center gap-5 text-base md:flex">

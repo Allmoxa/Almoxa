@@ -459,3 +459,72 @@
     filter: drop-shadow(0 10px 12px rgb(0 0 0 / 16%));
   }
 }
+
+/*
+ * Logo da home como botão de refresh. .logo-refresh-visual carrega a
+ * rotação (hover) e a escala (clique) como duas custom properties
+ * separadas que se compõem num único transform — assim o clique no meio
+ * de um hover não briga com a inclinação em andamento.
+ */
+.logo-refresh-button {
+  --logo-tilt: 0deg;
+  --logo-scale: 1;
+  appearance: none;
+  cursor: pointer;
+}
+
+.logo-refresh-visual {
+  transform: rotate(var(--logo-tilt)) scale(var(--logo-scale));
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.logo-refresh-button:hover .logo-refresh-visual {
+  --logo-tilt: 0.8deg;
+}
+
+.logo-refresh-button[data-pressed="true"] .logo-refresh-visual {
+  --logo-scale: 0.96;
+}
+
+.logo-refresh-text {
+  display: inline-block;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.logo-refresh-button:hover .logo-refresh-text {
+  transform: translateY(-2px);
+}
+
+.logo-refresh-path {
+  stroke-dasharray: var(--path-length, none);
+  stroke-dashoffset: 0;
+}
+
+.logo-refresh-button:hover .logo-refresh-path {
+  animation: logo-redraw 500ms ease-out forwards;
+}
+
+@keyframes logo-redraw {
+  from {
+    stroke-dashoffset: var(--path-length, 0);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-refresh-visual,
+  .logo-refresh-text {
+    transition: none;
+  }
+  .logo-refresh-button:hover .logo-refresh-visual {
+    --logo-tilt: 0deg;
+  }
+  .logo-refresh-button:hover .logo-refresh-text {
+    transform: none;
+  }
+  .logo-refresh-button:hover .logo-refresh-path {
+    animation: none;
+  }
+}
