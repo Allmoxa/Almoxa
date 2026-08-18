@@ -76,7 +76,7 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <div className="mx-auto flex w-full max-w-5xl items-center px-6 py-6">
-        <Link to="/" className="font-display text-xl">
+        <Link to="/" className="font-logo text-2xl font-semibold">
           Almoxá
         </Link>
       </div>

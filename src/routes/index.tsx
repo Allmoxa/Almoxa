@@ -62,7 +62,7 @@ function Landing() {
       <RevealSafetyNet />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <span className="font-display text-xl">Almoxá</span>
+        <span className="font-logo text-3xl font-semibold">Almoxá</span>
         <Link
           to="/auth"
           className="text-sm text-muted-foreground transition-colors hover:text-foreground"
