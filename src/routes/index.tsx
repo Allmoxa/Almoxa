@@ -89,15 +89,14 @@ function Landing() {
             |
           </span>
           <a href="#contato" className="text-foreground transition-opacity hover:opacity-70">
-            Contato
+            <SketchUnderline>Contato</SketchUnderline>
           </a>
         </nav>
 
         <Link
           to="/auth"
-          className="flex items-center gap-2 text-sm font-medium text-foreground transition-opacity hover:opacity-70"
+          className="text-lg font-semibold text-foreground transition-opacity hover:opacity-70"
         >
-          <span aria-hidden="true">→</span>
           Entrar
         </Link>
       </header>
