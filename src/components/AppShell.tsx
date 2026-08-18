@@ -14,6 +14,7 @@ import { useStoreContext, useEnterStore } from "@/hooks/use-store-context";
 import { useTheme } from "@/hooks/use-theme";
 import { useUserRole, roleLabel } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoBracket } from "@/components/logo-bracket";
 
 // Ordem do ciclo da barraca: ver o que tem, planejar a compra, dar entrada,
 // vender, conferir.
@@ -71,7 +72,7 @@ export function AppShell({
       <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-4 sm:px-6">
           <Link to="/estoque" className="font-logo text-2xl font-semibold leading-none">
-            Almoxá
+            <LogoBracket>Almoxá</LogoBracket>
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -143,7 +144,9 @@ export function AppShell({
                 side="right"
                 className="flex w-[85vw] max-w-xs flex-col gap-0 sm:max-w-sm"
               >
-                <SheetTitle className="font-logo text-xl font-semibold">Almoxá</SheetTitle>
+                <SheetTitle className="font-logo text-xl font-semibold">
+                  <LogoBracket>Almoxá</LogoBracket>
+                </SheetTitle>
 
                 {role ? (
                   <span

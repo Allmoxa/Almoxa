@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { LogoBracket } from "@/components/logo-bracket";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
@@ -77,7 +78,7 @@ function AuthPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <div className="mx-auto flex w-full max-w-5xl items-center px-6 py-6">
         <Link to="/" className="font-logo text-2xl font-semibold">
-          Almoxá
+          <LogoBracket>Almoxá</LogoBracket>
         </Link>
       </div>
 
