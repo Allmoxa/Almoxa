@@ -9,6 +9,7 @@ import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoBracket } from "@/components/logo-bracket";
+import { MagneticLink } from "@/components/magnetic-button";
 import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
 
 export const Route = createFileRoute("/")({
@@ -123,14 +124,14 @@ function Landing() {
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <Link
+            <MagneticLink
               to="/auth"
               className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
               data-aos="fade-up"
               data-aos-delay="200"
             >
               Entrar na conta
-            </Link>
+            </MagneticLink>
           </div>
 
           <div data-aos="fade-left" data-aos-delay="150">
