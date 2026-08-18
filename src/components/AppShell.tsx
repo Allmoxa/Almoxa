@@ -55,7 +55,7 @@ export function AppShell({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-4 sm:px-6">
-          <Link to="/estoque" className="font-display text-xl leading-none">
+          <Link to="/estoque" className="font-logo text-2xl font-semibold leading-none">
             Almoxá
           </Link>
 
@@ -128,7 +128,7 @@ export function AppShell({
                 side="right"
                 className="flex w-[85vw] max-w-xs flex-col gap-0 sm:max-w-sm"
               >
-                <SheetTitle className="font-display text-lg">Almoxá</SheetTitle>
+                <SheetTitle className="font-logo text-xl font-semibold">Almoxá</SheetTitle>
 
                 {role ? (
                   <span
