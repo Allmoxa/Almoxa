@@ -32,14 +32,6 @@ const corrugation: CSSProperties = {
 
 const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube-size)" };
 
-// Ponta das duas abas do topo: em 0 (fechada) elas quase se tocam no meio,
-// como hoje; em 1 (aberta) recuam para os cantos e revelam o miolo escuro
-// da caixa por baixo, de onde os produtos parecem sair.
-const FLAP_TIP_CLOSED = 58;
-const FLAP_TIP_OPEN = 18;
-const flapTip = (openness: number) =>
-  FLAP_TIP_CLOSED - (FLAP_TIP_CLOSED - FLAP_TIP_OPEN) * openness;
-
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
   const [opening, setOpening] = useState(false);
@@ -57,10 +49,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   }, [index, opening, steps.length]);
 
   const spin = () => setIndex((i) => (i + 1) % steps.length);
-
-  // 0 na primeira face, 1 na última: a caixa vai abrindo aos poucos conforme
-  // ela gira, em vez de pular pronta de fechada para aberta.
-  const openProgress = index / Math.max(steps.length - 1, 1);
 
   const handleTest = () => {
     if (opening) return;
@@ -100,7 +88,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         >
           <RotateCw className="h-4 w-4" strokeWidth={2.5} />
         </button>
-
         <div
           className="relative transition-all duration-700 ease-in-out"
           style={{
@@ -174,26 +161,26 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             }}
           >
             <div
-              className="absolute inset-0 transition-[clip-path] duration-700 ease-in-out"
+              className="absolute inset-0"
               style={{
-                clipPath: `polygon(0% 0%, 100% 0%, ${flapTip(openProgress)}% 100%, 0% 100%)`,
+                clipPath: "polygon(0% 0%, 100% 0%, 58% 100%, 0% 100%)",
                 background: `linear-gradient(135deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
               }}
             />
             <div
-              className="absolute inset-0 transition-[clip-path] duration-700 ease-in-out"
+              className="absolute inset-0"
               style={{
-                clipPath: `polygon(0% 0%, 100% 0%, 100% 100%, ${100 - flapTip(openProgress)}% 100%)`,
+                clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 42% 100%)",
                 background: `linear-gradient(225deg, ${CARDBOARD_LIGHT}, ${CARDBOARD})`,
               }}
             />
             <span
-              className="absolute h-5 w-[55%] -ml-[27.5%] rotate-90 transition-opacity duration-500"
+              className="absolute h-5 w-[55%] -ml-[27.5%] rotate-90"
               style={{
                 left: "50%",
                 top: "35%",
                 backgroundColor: TAPE,
-                opacity: 0.92 * (1 - openProgress),
+                opacity: 0.92,
               }}
             />
           </div>

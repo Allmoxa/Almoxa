@@ -7,8 +7,11 @@ import { AppShell } from "@/components/AppShell";
 import { ProductEditDialog, type ProductEditValues } from "@/components/product-edit-dialog";
 import { ProductMovementDialog, type MovementValues } from "@/components/product-movement-dialog";
 import { ProductProfitDialog } from "@/components/product-profit-dialog";
+import { StoreStockView } from "@/components/store-stock-view";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PaginationNav } from "@/components/ui/pagination-nav";
+import { useStoreContext } from "@/hooks/use-store-context";
+import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
   currency,
@@ -54,7 +57,18 @@ const inputClass =
 const PAGE_SIZE = 15;
 
 function EstoquePage() {
+  const { isComissionado, isLoading: loadingRole } = useUserRole();
+
+  // O comissionado não tem linha de products pela RLS, então esta tela não teria
+  // o que mostrar para ele — nem faria sentido, cheia de custo e lucro.
+  if (loadingRole) return null;
+  if (isComissionado) return <StoreStockView />;
+  return <EstoqueDono />;
+}
+
+function EstoqueDono() {
   const queryClient = useQueryClient();
+  const { storeOwnerId } = useStoreContext();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -94,10 +108,12 @@ function EstoquePage() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
       const { data, error } = await supabase
         .from("products")
         .insert({
-          user_id: userId,
+          user_id: storeId,
           name: values.name,
           sku: values.sku || slugSku(values.name),
           purchase_price: values.purchase_price,
@@ -109,7 +125,7 @@ function EstoquePage() {
       if (error) throw error;
       if (values.quantity > 0) {
         const { error: movementError } = await supabase.from("movements").insert({
-          user_id: userId,
+          user_id: storeId,
           product_id: data.id,
           kind: "in",
           quantity: values.quantity,
@@ -143,10 +159,12 @@ function EstoquePage() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
       if (kind === "out" && quantity > product.quantity)
         throw new Error("Quantidade maior que o estoque disponível");
       const { error } = await supabase.from("movements").insert({
-        user_id: userId,
+        user_id: storeId,
         product_id: product.id,
         kind,
         quantity,
@@ -170,6 +188,8 @@ function EstoquePage() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, o lançamento é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
 
       if (
         values.purchase_price !== product.purchase_price ||
@@ -187,7 +207,7 @@ function EstoquePage() {
       const delta = values.quantity - product.quantity;
       if (delta !== 0) {
         const { error } = await supabase.from("movements").insert({
-          user_id: userId,
+          user_id: storeId,
           product_id: product.id,
           kind: delta > 0 ? "in" : "out",
           quantity: Math.abs(delta),
@@ -505,17 +525,6 @@ function EstoquePage() {
           </table>
         )}
       </div>
-
-      {pageCount > 1 ? (
-        <div className="mt-6">
-          <PaginationNav
-            currentPage={currentPage}
-            pageCount={pageCount}
-            onChange={setPage}
-            label="Paginação do estoque"
-          />
-        </div>
-      ) : null}
 
       {moving ? (
         <ProductMovementDialog

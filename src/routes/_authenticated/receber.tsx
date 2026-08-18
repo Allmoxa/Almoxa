@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireOwner } from "@/lib/guards";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { useStoreContext } from "@/hooks/use-store-context";
 import { supabase } from "@/integrations/supabase/client";
 import { extractProducts, type ExtractedItem } from "@/lib/intake.functions";
 import { currency, slugSku } from "@/lib/inventory";
@@ -24,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/receber")({
       },
     ],
   }),
+  beforeLoad: requireOwner,
   component: ReceberPage,
 });
 
@@ -40,6 +43,7 @@ const toDataUrl = (file: File) =>
 
 function ReceberPage() {
   const queryClient = useQueryClient();
+  const { storeOwnerId } = useStoreContext();
   const extract = useServerFn(extractProducts);
   const cameraRef = useRef<HTMLInputElement>(null);
   const docRef = useRef<HTMLInputElement>(null);
@@ -72,6 +76,8 @@ function ReceberPage() {
       const { data: userData } = await supabase.auth.getUser();
       const userId = userData.user?.id;
       if (!userId) throw new Error("Sessão expirada");
+      // Dentro de uma loja adentrada, a entrada é dela, não do onisciente.
+      const storeId = storeOwnerId ?? userId;
 
       for (const row of rows) {
         const sku = (row.sku || slugSku(row.name)).slice(0, 80);
@@ -91,7 +97,7 @@ function ReceberPage() {
           const { data: inserted, error } = await supabase
             .from("products")
             .insert({
-              user_id: userId,
+              user_id: storeId,
               name: row.name,
               sku,
               purchase_price: row.purchase_price,
@@ -106,7 +112,7 @@ function ReceberPage() {
         }
 
         const { error: movementError } = await supabase.from("movements").insert({
-          user_id: userId,
+          user_id: storeId,
           product_id: productId,
           kind: "in",
           quantity: row.quantity,

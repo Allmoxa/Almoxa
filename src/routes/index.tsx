@@ -7,6 +7,9 @@ import { AosInit } from "@/components/aos-init";
 import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
+import { ScrollFade } from "@/components/scroll-fade";
+import { LogoBracket } from "@/components/logo-bracket";
+import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -56,23 +59,55 @@ function Landing() {
   }, [navigate]);
 
   return (
-    <div className="paper-texture-bg min-h-screen overflow-x-hidden bg-background">
+    <div id="inicio" className="paper-texture-bg min-h-screen overflow-x-hidden bg-background">
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <span className="font-logo text-3xl font-semibold">Almoxá</span>
+        <ScrollFade className="font-logo text-3xl font-semibold">
+          <LogoBracket>Almoxá</LogoBracket>
+        </ScrollFade>
+
+        <nav className="hidden items-center gap-5 text-base md:flex">
+          <a href="#inicio" className="font-medium text-foreground">
+            <SketchCircle>Início</SketchCircle>
+          </a>
+          <span className="text-border-strong" aria-hidden="true">
+            |
+          </span>
+          <a href="#como-funciona" className="text-foreground transition-opacity hover:opacity-70">
+            <SketchUnderline>Como funciona</SketchUnderline>
+          </a>
+          <span className="text-border-strong" aria-hidden="true">
+            |
+          </span>
+          <a href="#quem-fez" className="text-foreground transition-opacity hover:opacity-70">
+            <SketchUnderline>Quem fez</SketchUnderline>
+          </a>
+          <span className="text-border-strong" aria-hidden="true">
+            |
+          </span>
+          <a href="#contato" className="text-foreground transition-opacity hover:opacity-70">
+            <SketchUnderline>Contato</SketchUnderline>
+          </a>
+        </nav>
+
         <Link
           to="/auth"
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="text-lg font-semibold text-foreground transition-opacity hover:opacity-70"
         >
           Entrar
         </Link>
       </header>
 
+      <SketchDivider />
+
       <main className="mx-auto max-w-5xl px-6">
-        <section className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]">
+        <section
+          id="como-funciona"
+          className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]"
+        >
           <div>
             <p className="label-caps" data-aos="fade-up">
               Controle de entrada e saída

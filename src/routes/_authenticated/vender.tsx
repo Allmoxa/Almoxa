@@ -8,6 +8,8 @@ import { ProductPicker } from "@/components/product-picker";
 import { SaleBuilderDialog, type BuiltSaleLine } from "@/components/sale-builder-dialog";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { supabase } from "@/integrations/supabase/client";
+import { useStoreContext } from "@/hooks/use-store-context";
+import { useUserRole } from "@/hooks/use-user-role";
 import { extractSale, type ExtractedSaleItem } from "@/lib/sale-intake.functions";
 import {
   currency,
@@ -93,9 +95,29 @@ function VenderPage() {
   const [totalDraft, setTotalDraft] = useState("");
   const [building, setBuilding] = useState(false);
 
+  const role = useUserRole();
+  const { storeOwnerId } = useStoreContext();
+  const isComissionado = role.isComissionado;
+
   const { data: products = [] } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", isComissionado],
+    enabled: !role.isLoading,
     queryFn: async () => {
+      // O comissionado não tem linha de products pela RLS: o estoque dele vem da
+      // função, que devolve só nome, SKU, quantidade e preço de venda. O custo
+      // entra como 0 apenas para o tipo fechar — nenhuma conta de lucro é
+      // mostrada a ele, e o valor real nunca sai do servidor.
+      if (isComissionado) {
+        const { data, error } = await supabase.rpc("store_products");
+        if (error) throw error;
+        return (data ?? []).map((item) => ({
+          ...item,
+          purchase_price: 0,
+          notes: null,
+          created_at: new Date(0).toISOString(),
+        })) as Product[];
+      }
+
       const { data, error } = await supabase
         .from("products")
         .select("id, name, sku, quantity, purchase_price, sale_price, notes, created_at")
@@ -203,10 +225,16 @@ function VenderPage() {
         }
       }
 
+      // O movimento pertence ao dono do estoque, não a quem lançou. Quem lançou
+      // é carimbado pelo banco em created_by, e é assim que a venda do
+      // comissionado — ou do onisciente que adentrou — sai do estoque certo com
+      // o nome de quem vendeu junto.
+      const stockOwnerId = storeOwnerId ?? userId;
+
       const ref = Date.now().toString(36).toUpperCase().slice(-4);
       const { error } = await supabase.from("movements").insert(
         rows.map((row) => ({
-          user_id: userId,
+          user_id: stockOwnerId,
           product_id: row.productId,
           kind: "out" as const,
           quantity: row.quantity,
@@ -349,7 +377,9 @@ function VenderPage() {
                   <th className="label-caps px-3 py-3 font-normal">Qtd.</th>
                   <th className="label-caps px-3 py-3 font-normal">Valor un.</th>
                   <th className="label-caps px-3 py-3 text-right font-normal">Subtotal</th>
-                  <th className="label-caps px-3 py-3 text-right font-normal">Lucro</th>
+                  {isComissionado ? null : (
+                    <th className="label-caps px-3 py-3 text-right font-normal">Lucro</th>
+                  )}
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -403,13 +433,15 @@ function VenderPage() {
                       <td className="px-3 py-3 text-right tabular-nums">
                         {currency(line.quantity * line.unit_price)}
                       </td>
-                      <td
-                        className={`px-3 py-3 text-right tabular-nums ${
-                          lineProfit < 0 ? "text-destructive" : "text-success"
-                        }`}
-                      >
-                        {product ? currency(lineProfit) : "—"}
-                      </td>
+                      {isComissionado ? null : (
+                        <td
+                          className={`px-3 py-3 text-right tabular-nums ${
+                            lineProfit < 0 ? "text-destructive" : "text-success"
+                          }`}
+                        >
+                          {product ? currency(lineProfit) : "—"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() =>
@@ -451,8 +483,15 @@ function VenderPage() {
               </button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Total {currency(total)} · lucro{" "}
-              <span className={profit < 0 ? "text-destructive" : "text-success"}>{currency(profit)}</span>
+              Total {currency(total)}
+              {isComissionado ? null : (
+                <>
+                  {" · lucro "}
+                  <span className={profit < 0 ? "text-destructive" : "text-success"}>
+                    {currency(profit)}
+                  </span>
+                </>
+              )}
             </p>
           </div>
         </section>

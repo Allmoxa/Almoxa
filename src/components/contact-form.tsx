@@ -18,7 +18,7 @@ export function ContactForm() {
   });
 
   return (
-    <section className="border-b border-border py-24">
+    <section id="contato" className="border-b border-border py-24">
       <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr]">
         <div>
           <motion.p
