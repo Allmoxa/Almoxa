@@ -210,6 +210,150 @@
 }
 
 /*
+ * Botão circular "Entrar na conta" -- papelão seco absorvendo líquido.
+ * .cardboard-liquid-wet fica em translateY(105%) (fora, embaixo) e sobe pra
+ * 0% no hover/foco/toque; por ser transition (não animation), interromper o
+ * hover no meio do caminho continua dali, não reinicia. O texto creme é uma
+ * cópia recortada por clip-path com a mesma duração/curva -- não precisa
+ * viver dentro da camada molhada pra "acompanhar o nível".
+ */
+.cardboard-liquid-button {
+  --cardboard-liquid-size: 120px;
+}
+
+@media (min-width: 640px) {
+  .cardboard-liquid-button {
+    --cardboard-liquid-size: 150px;
+  }
+}
+
+.cardboard-liquid-circle {
+  width: var(--cardboard-liquid-size);
+  height: var(--cardboard-liquid-size);
+  box-shadow: 0 12px 26px -14px rgba(46, 41, 36, 0.4);
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardboard-liquid-button:hover .cardboard-liquid-circle {
+  transform: scale(1.035);
+}
+
+.cardboard-liquid-button:active .cardboard-liquid-circle {
+  transform: scale(0.96);
+}
+
+.cardboard-liquid-button:focus-visible {
+  outline: 2px solid #49392c;
+  outline-offset: 3px;
+  border-radius: 9999px;
+}
+
+.cardboard-liquid-dry {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(72, 51, 33, 0.08) 0,
+      rgba(72, 51, 33, 0.08) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    #b68b58;
+}
+
+.cardboard-liquid-wet {
+  transform: translateY(105%);
+  transition: transform 850ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardboard-liquid-button:hover .cardboard-liquid-wet,
+.cardboard-liquid-button:focus-visible .cardboard-liquid-wet,
+.cardboard-liquid-button:active .cardboard-liquid-wet {
+  transform: translateY(0%);
+}
+
+.cardboard-liquid-label-wet {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 850ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cardboard-liquid-button:hover .cardboard-liquid-label-wet,
+.cardboard-liquid-button:focus-visible .cardboard-liquid-label-wet,
+.cardboard-liquid-button:active .cardboard-liquid-label-wet {
+  clip-path: inset(0% 0 0 0);
+}
+
+.cardboard-liquid-button:hover .cardboard-liquid-label,
+.cardboard-liquid-button:focus-visible .cardboard-liquid-label {
+  transform: rotate(1deg);
+}
+
+.cardboard-liquid-label {
+  transition: transform 240ms ease-out;
+}
+
+.cardboard-liquid-arrow {
+  transition: transform 240ms ease-out;
+}
+
+.cardboard-liquid-button:hover .cardboard-liquid-arrow,
+.cardboard-liquid-button:focus-visible .cardboard-liquid-arrow {
+  transform: translate(2px, -3px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cardboard-liquid-button:hover .cardboard-liquid-wave-a,
+  .cardboard-liquid-button:focus-visible .cardboard-liquid-wave-a {
+    animation: cardboard-liquid-wobble-a 2.6s ease-in-out infinite;
+  }
+
+  .cardboard-liquid-button:hover .cardboard-liquid-wave-b,
+  .cardboard-liquid-button:focus-visible .cardboard-liquid-wave-b {
+    animation: cardboard-liquid-wobble-b 3.4s ease-in-out infinite;
+  }
+}
+
+@keyframes cardboard-liquid-wobble-a {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes cardboard-liquid-wobble-b {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-2.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardboard-liquid-circle,
+  .cardboard-liquid-wet,
+  .cardboard-liquid-label-wet,
+  .cardboard-liquid-label,
+  .cardboard-liquid-arrow {
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+
+  .cardboard-liquid-button:hover .cardboard-liquid-label,
+  .cardboard-liquid-button:focus-visible .cardboard-liquid-label {
+    transform: none;
+  }
+
+  .cardboard-liquid-wave-a,
+  .cardboard-liquid-wave-b {
+    animation: none !important;
+  }
+}
+
+/*
  * Canto artesanal da aba ativa da navbar (NavTabLabel). --corner-length vem
  * do getTotalLength() de cada <path>, plantado via JS logo no mount; o
  * fallback de 24 aqui é só rede de segurança pro instante antes disso rodar.
