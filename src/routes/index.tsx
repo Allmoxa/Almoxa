@@ -9,7 +9,7 @@ import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
-import { MagneticLink } from "@/components/magnetic-button";
+import { CardboardLiquidButton } from "@/components/cardboard-liquid-button";
 import { MagneticNavItem } from "@/components/magnetic-nav-item";
 import { SketchDivider } from "@/components/sketch";
 import { useHeroParallax } from "@/hooks/use-hero-parallax";
@@ -125,12 +125,7 @@ function Landing() {
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <MagneticLink
-              to="/auth"
-              className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Entrar na conta
-            </MagneticLink>
+            <CardboardLiquidButton to="/auth">Entrar na conta</CardboardLiquidButton>
           </div>
 
           <div ref={heroBoxRef} style={{ willChange: "transform" }}>
