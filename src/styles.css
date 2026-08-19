@@ -182,6 +182,49 @@
 }
 
 /*
+ * Canto artesanal da aba ativa da navbar (NavTabLabel). --corner-length vem
+ * do getTotalLength() de cada <path>, plantado via JS logo no mount; o
+ * fallback de 24 aqui é só rede de segurança pro instante antes disso rodar.
+ * Opacity 0 é quem garante "nada aparece antes da animação" -- dasharray e
+ * dashoffset ficam irrelevantes enquanto ela não sobe.
+ */
+@utility nav-tab-corner {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: var(--corner-length, 24);
+  stroke-dashoffset: var(--corner-length, 24);
+  opacity: 0;
+}
+
+/* Duas pontas (as marcadas [data-peek]) espiam de leve no hover das abas
+   inativas -- só some daqui quando a aba tem is-active, pra não brigar com
+   o GSAP que já está dono do stroke-dashoffset nesse caso. */
+.nav-tab:not(.is-active) .nav-tab-corner[data-peek="true"] {
+  transition:
+    opacity 200ms ease-out,
+    stroke-dashoffset 200ms ease-out;
+}
+
+.nav-tab:not(.is-active):hover .nav-tab-corner[data-peek="true"] {
+  opacity: 0.4;
+  stroke-dashoffset: calc(var(--corner-length, 24) * 0.72);
+}
+
+/*
+ * Largura do Painel administrativo por aba. --panel-w é setado por seção via
+ * inline style (AdminPanel.tsx); aqui só clampa contra a viewport. Fica de
+ * fora do sm: de propósito -- no mobile o modal é sempre tela cheia (h-full/
+ * w-full já cobrem isso), então essa regra nunca briga com aquele estado.
+ */
+@media (min-width: 640px) {
+  .admin-panel-window {
+    width: min(var(--panel-w, 960px), calc(100vw - 48px));
+  }
+}
+
+/*
  * Textura de papel: ruído fino (SVG feTurbulence, seamless via stitchTiles,
  * sem precisar de imagem) em multiply sobre o --background já quente. Baixo
  * contraste de propósito — é grão, não deve competir com o texto por cima.
@@ -540,5 +583,11 @@
     --tw-exit-translate-x: 0;
     --tw-exit-translate-y: 0;
     --tw-exit-rotate: 0;
+  }
+
+  /* O desenho dos cantos ativos é coisa do NavTabLabel (JS já pula a
+     animação nesse caso). Só o espiar de hover é CSS puro -- encurta aqui. */
+  .nav-tab:not(.is-active) .nav-tab-corner[data-peek="true"] {
+    transition-duration: 80ms;
   }
 }
