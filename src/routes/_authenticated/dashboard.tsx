@@ -1,14 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { requireOwner } from "@/lib/guards";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { AppShell } from "@/components/AppShell";
 import { AnimatedNumber } from "@/components/ui/animated-number";
-import { BoxSpinner } from "@/components/ui/box-spinner";
+import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { DashboardFilterBar, PERIOD_LABELS } from "@/components/dashboard-filter-bar";
+import { DashboardAdvancedFilters } from "@/components/dashboard-advanced-filters";
+import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { currency, dateTime, isRealSale, qty, type Movement, type Product } from "@/lib/inventory";
+import { currency, dateTime, qty, type Movement, type Product } from "@/lib/inventory";
+import {
+  computeDashboardStats,
+  DEFAULT_FILTERS,
+  filtersToSearch,
+  hasAnyActiveFilter,
+  searchToFilters,
+  type DashboardFilters as DashboardFiltersType,
+  type DashboardSearch,
+} from "@/lib/dashboard-filters";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -18,15 +31,57 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
     ],
   }),
   beforeLoad: requireOwner,
+  validateSearch: (search: Record<string, unknown>): DashboardSearch => {
+    const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+    return {
+      period: str(search["period"]),
+      from: str(search["from"]),
+      to: str(search["to"]),
+      products: str(search["products"]),
+      stock: str(search["stock"]),
+      movement: str(search["movement"]),
+      inactive: str(search["inactive"]),
+      valueType: str(search["valueType"]),
+      min: str(search["min"]),
+      max: str(search["max"]),
+      sort: str(search["sort"]),
+    };
+  },
   component: DashboardPage,
 });
 
-const LOW_STOCK_THRESHOLD = 5;
-const STALLED_DAYS = 30;
-const FLOW_DAYS = 14;
+// Antes só os últimos 300 lançamentos vinham pro navegador — suficiente
+// quando não havia como escolher um período maior que "últimos 14 dias".
+// Com o filtro de período liberando janelas maiores (ex.: mês anterior,
+// personalizado), o limite subiu para não cortar movimentações antigas que
+// o usuário pediu explicitamente pra ver.
+const MOVEMENTS_LIMIT = 1000;
 
 function DashboardPage() {
-  const { data: products = [], isLoading: loadingProducts } = useQuery({
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const reducedMotion = usePrefersReducedMotion();
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const advancedTriggerRef = useRef<HTMLButtonElement>(null);
+
+  const filters = useMemo(() => searchToFilters(search), [search]);
+
+  const setFilters = (next: DashboardFiltersType) => {
+    navigate({ search: filtersToSearch(next), replace: true, resetScroll: false });
+  };
+
+  const closeAdvanced = () => {
+    setAdvancedOpen(false);
+    // Garantia explícita além do retorno de foco padrão do Radix Dialog.
+    advancedTriggerRef.current?.focus();
+  };
+
+  const {
+    data: products = [],
+    isLoading: loadingProducts,
+    isError: productsError,
+    refetch: refetchProducts,
+  } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,8 +93,13 @@ function DashboardPage() {
     },
   });
 
-  const { data: movements = [], isLoading: loadingMovements } = useQuery({
-    queryKey: ["movements"],
+  const {
+    data: movements = [],
+    isLoading: loadingMovements,
+    isError: movementsError,
+    refetch: refetchMovements,
+  } = useQuery({
+    queryKey: ["movements", MOVEMENTS_LIMIT],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("movements")
@@ -47,162 +107,159 @@ function DashboardPage() {
           "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, reverses_id, reversed_at, products(name, sku)",
         )
         .order("created_at", { ascending: false })
-        .limit(300);
+        .limit(MOVEMENTS_LIMIT);
       if (error) throw error;
       return data as Movement[];
     },
   });
 
   const isLoading = loadingProducts || loadingMovements;
-  const stats = useDashboardStats(products, movements);
+  const hasError = productsError || movementsError;
+  const hasAnyData = products.length > 0 || movements.length > 0;
+  const stats = useMemo(() => computeDashboardStats(products, movements, filters), [products, movements, filters]);
+
+  const activeFilters = hasAnyActiveFilter(filters);
+  const noResults = !isLoading && activeFilters && stats.filteredProductCount === 0;
+
+  const retry = () => {
+    refetchProducts();
+    refetchMovements();
+  };
+
+  const periodLabel = PERIOD_LABELS[filters.period.preset];
 
   return (
     <AppShell title="Dashboard" description="Visão geral do seu negócio: estoque, vendas e tendências.">
       <div className="theme-dashboard -mx-4 rounded-3xl bg-background px-5 py-8 sm:-mx-6 sm:px-8">
+        <div aria-live="polite" className="sr-only">
+          {!isLoading && !hasError
+            ? `${stats.filteredProductCount} produtos e ${stats.filteredMovementCount} movimentações encontrados.`
+            : null}
+        </div>
+
         {isLoading ? (
-          <div className="flex flex-col items-center gap-3 py-24">
-            <BoxSpinner size={40} />
-            <p className="text-sm text-muted-foreground">Carregando…</p>
+          <DashboardSkeleton />
+        ) : hasError && !hasAnyData ? (
+          <div className="flex flex-col items-center gap-3 py-24 text-center">
+            <p className="text-sm text-muted-foreground">Não foi possível carregar o dashboard agora.</p>
+            <Button type="button" variant="outline" onClick={retry}>
+              Tentar novamente
+            </Button>
           </div>
         ) : (
           <div className="space-y-8">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard delay={0} label="Investido em estoque" value={stats.totalInvested} format={currency} />
-              <StatCard delay={80} label="Ticket médio de saída" value={stats.avgTicket} format={currency} />
-              <StatCard
-                delay={160}
-                label="Produtos com estoque baixo"
-                value={stats.lowStock.length}
-                warn={stats.lowStock.length > 0}
-                targetId="lista-estoque-baixo"
-              />
-              <StatCard
-                delay={240}
-                label="Produtos parados"
-                value={stats.stalled.length}
-                warn={stats.stalled.length > 0}
-                targetId="lista-produtos-parados"
-              />
-            </div>
+            {hasError ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+                <span>Não foi possível atualizar os dados agora. Mostrando o último resultado válido.</span>
+                <Button type="button" variant="outline" size="sm" onClick={retry}>
+                  Tentar novamente
+                </Button>
+              </div>
+            ) : null}
 
-            <ChartCard delay={320} title="Entradas x Saídas" subtitle={`Últimos ${FLOW_DAYS} dias`}>
-              <FlowChart data={stats.flow} />
-            </ChartCard>
+            <DashboardFilterBar
+              filters={filters}
+              onChange={setFilters}
+              products={products}
+              advancedOpen={advancedOpen}
+              onAdvancedOpenChange={(open) => (open ? setAdvancedOpen(true) : closeAdvanced())}
+              advancedTriggerRef={advancedTriggerRef}
+            />
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ChartCard delay={400} title="Mais vendidos" subtitle="Unidades saídas do estoque">
-                <RankingChart data={stats.topSellers} dataKey="qty" valueFormat={qty} color="var(--chart-1)" />
-              </ChartCard>
+            {noResults ? (
+              <div className="paper-panel flex flex-col items-center gap-3 py-16 text-center">
+                <p className="text-sm text-muted-foreground">Nenhum resultado encontrado com estes filtros.</p>
+                <Button type="button" variant="outline" onClick={() => setFilters(DEFAULT_FILTERS)}>
+                  Limpar filtros
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <StatCard delay={0} label="Investido em estoque" value={stats.totalInvested} format={currency} />
+                  <StatCard delay={80} label="Ticket médio de saída" value={stats.avgTicket} format={currency} />
+                  <StatCard
+                    delay={160}
+                    label="Produtos com estoque baixo"
+                    value={stats.lowStock.length}
+                    warn={stats.lowStock.length > 0}
+                    targetId="lista-estoque-baixo"
+                  />
+                  <StatCard
+                    delay={240}
+                    label="Produtos parados"
+                    value={stats.stalled.length}
+                    warn={stats.stalled.length > 0}
+                    targetId="lista-produtos-parados"
+                  />
+                </div>
 
-              <ChartCard delay={480} title="Lucro por produto" subtitle="Realizado nas vendas registradas">
-                <RankingChart data={stats.topProfit} dataKey="profit" valueFormat={currency} color="var(--chart-2)" />
-              </ChartCard>
-            </div>
+                <ChartCard delay={320} title="Entradas x Saídas" subtitle={periodLabel}>
+                  <FlowChart data={stats.flow} reducedMotion={reducedMotion} />
+                </ChartCard>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ListCard id="lista-estoque-baixo" delay={560} title="Estoque baixo" empty="Nenhum produto abaixo do mínimo.">
-                {stats.lowStock.map((p, i) => (
-                  <ListRow key={p.id} delay={i * 60}>
-                    <span className="truncate">{p.name}</span>
-                    <span className="font-mono text-xs text-destructive">{qty(p.quantity)} un.</span>
-                  </ListRow>
-                ))}
-              </ListCard>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <ChartCard delay={400} title="Mais vendidos" subtitle="Unidades saídas do estoque">
+                    <RankingChart
+                      data={stats.topSellers}
+                      dataKey="qty"
+                      valueFormat={qty}
+                      color="var(--chart-1)"
+                      reducedMotion={reducedMotion}
+                    />
+                  </ChartCard>
 
-              <ListCard
-                id="lista-produtos-parados"
-                delay={640}
-                title="Produtos parados"
-                empty={`Tudo girando nos últimos ${STALLED_DAYS} dias.`}
-              >
-                {stats.stalled.map((p, i) => (
-                  <ListRow key={p.id} delay={i * 60}>
-                    <span className="truncate">{p.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {p.lastOut ? dateTime(new Date(p.lastOut).toISOString()) : "Nunca saiu"}
-                    </span>
-                  </ListRow>
-                ))}
-              </ListCard>
-            </div>
+                  <ChartCard delay={480} title="Lucro por produto" subtitle="Realizado nas vendas registradas">
+                    <RankingChart
+                      data={stats.topProfit}
+                      dataKey="profit"
+                      valueFormat={currency}
+                      color="var(--chart-2)"
+                      reducedMotion={reducedMotion}
+                    />
+                  </ChartCard>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <ListCard id="lista-estoque-baixo" delay={560} title="Estoque baixo" empty="Nenhum produto abaixo do mínimo.">
+                    {stats.lowStock.map((p, i) => (
+                      <ListRow key={p.id} delay={i * 60}>
+                        <span className="truncate">{p.name}</span>
+                        <span className="font-mono text-xs text-destructive">{qty(p.quantity)} un.</span>
+                      </ListRow>
+                    ))}
+                  </ListCard>
+
+                  <ListCard
+                    id="lista-produtos-parados"
+                    delay={640}
+                    title="Produtos parados"
+                    empty="Tudo girando no período considerado."
+                  >
+                    {stats.stalled.map((p, i) => (
+                      <ListRow key={p.id} delay={i * 60}>
+                        <span className="truncate">{p.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {p.lastOut ? dateTime(new Date(p.lastOut).toISOString()) : "Nunca saiu"}
+                        </span>
+                      </ListRow>
+                    ))}
+                  </ListCard>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
+
+      <DashboardAdvancedFilters
+        open={advancedOpen}
+        onOpenChange={(open) => (open ? setAdvancedOpen(true) : closeAdvanced())}
+        filters={filters}
+        onApply={setFilters}
+      />
     </AppShell>
   );
-}
-
-function useDashboardStats(products: Product[], movements: Movement[]) {
-  return useMemo(() => {
-    const now = Date.now();
-
-    const totalInvested = products.reduce((sum, p) => sum + p.purchase_price * p.quantity, 0);
-
-    // Ajuste, estorno e venda estornada entram no histórico, mas não em ticket,
-    // lucro, ranking nem no cálculo de produto parado. O gráfico de fluxo abaixo
-    // é o único que os mantém: lá o assunto é mercadoria que entrou e saiu de
-    // fato, e o estorno movimenta a prateleira como qualquer outro lançamento.
-    const outMovements = movements.filter(isRealSale);
-    const avgTicket = outMovements.length
-      ? outMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) / outMovements.length
-      : 0;
-
-    const lowStock = [...products]
-      .filter((p) => p.quantity <= LOW_STOCK_THRESHOLD)
-      .sort((a, b) => a.quantity - b.quantity)
-      .slice(0, 8);
-
-    const productById = new Map(products.map((p) => [p.id, p]));
-    const soldByProduct = new Map<string, { name: string; qty: number; profit: number }>();
-    for (const m of outMovements) {
-      const product = productById.get(m.product_id);
-      const name = m.products?.name ?? product?.name ?? "—";
-      const entry = soldByProduct.get(m.product_id) ?? { name, qty: 0, profit: 0 };
-      entry.qty += m.quantity;
-      // O custo é o congelado na venda: mudar o preço de compra hoje não reescreve o passado.
-      entry.profit += (m.unit_price - (m.unit_cost || product?.purchase_price || 0)) * m.quantity;
-      soldByProduct.set(m.product_id, entry);
-    }
-    const topSellers = [...soldByProduct.values()]
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 6)
-      .map((s) => ({ name: s.name, qty: s.qty }));
-    const topProfit = [...soldByProduct.values()]
-      .sort((a, b) => b.profit - a.profit)
-      .slice(0, 6)
-      .map((s) => ({ name: s.name, profit: s.profit }));
-
-    const lastOutByProduct = new Map<string, number>();
-    for (const m of outMovements) {
-      const t = new Date(m.created_at).getTime();
-      const prev = lastOutByProduct.get(m.product_id) ?? 0;
-      if (t > prev) lastOutByProduct.set(m.product_id, t);
-    }
-    const stalledMs = STALLED_DAYS * 24 * 60 * 60 * 1000;
-    const stalled = products
-      .filter((p) => p.quantity > 0)
-      .map((p) => ({ ...p, lastOut: lastOutByProduct.get(p.id) ?? null }))
-      .filter((p) => !p.lastOut || now - p.lastOut > stalledMs)
-      .sort((a, b) => (a.lastOut ?? 0) - (b.lastOut ?? 0))
-      .slice(0, 8);
-
-    const dayFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
-    const flow: { date: string; label: string; entradas: number; saidas: number }[] = [];
-    for (let i = FLOW_DAYS - 1; i >= 0; i--) {
-      const d = new Date(now - i * 24 * 60 * 60 * 1000);
-      flow.push({ date: d.toISOString().slice(0, 10), label: dayFormatter.format(d), entradas: 0, saidas: 0 });
-    }
-    const flowByDate = new Map(flow.map((b) => [b.date, b]));
-    for (const m of movements) {
-      const key = new Date(m.created_at).toISOString().slice(0, 10);
-      const bucket = flowByDate.get(key);
-      if (!bucket) continue;
-      if (m.kind === "in") bucket.entradas += m.quantity;
-      else bucket.saidas += m.quantity;
-    }
-
-    return { totalInvested, avgTicket, lowStock, topSellers, topProfit, stalled, flow };
-  }, [products, movements]);
 }
 
 function scrollToTarget(targetId: string) {
@@ -319,7 +376,17 @@ function ListRow({ children, delay = 0 }: { children: ReactNode; delay?: number 
   );
 }
 
-function FlowChart({ data }: { data: { label: string; entradas: number; saidas: number }[] }) {
+// Entre 250-400ms pedidos pro update dos filtros — bem mais curto que os
+// 900ms de antes, que eram pensados só pra animação de entrada inicial.
+const CHART_TRANSITION_MS = 300;
+
+function FlowChart({
+  data,
+  reducedMotion,
+}: {
+  data: { label: string; entradas: number; saidas: number }[];
+  reducedMotion: boolean;
+}) {
   const config: ChartConfig = {
     entradas: { label: "Entradas", color: "var(--chart-1)" },
     saidas: { label: "Saídas", color: "var(--chart-5)" },
@@ -338,8 +405,8 @@ function FlowChart({ data }: { data: { label: string; entradas: number; saidas: 
           stroke="var(--color-entradas)"
           strokeWidth={2.5}
           dot={false}
-          isAnimationActive
-          animationDuration={900}
+          isAnimationActive={!reducedMotion}
+          animationDuration={CHART_TRANSITION_MS}
         />
         <Line
           type="monotone"
@@ -347,9 +414,8 @@ function FlowChart({ data }: { data: { label: string; entradas: number; saidas: 
           stroke="var(--color-saidas)"
           strokeWidth={2.5}
           dot={false}
-          isAnimationActive
-          animationDuration={900}
-          animationBegin={150}
+          isAnimationActive={!reducedMotion}
+          animationDuration={CHART_TRANSITION_MS}
         />
       </LineChart>
     </ChartContainer>
@@ -361,11 +427,13 @@ function RankingChart({
   dataKey,
   valueFormat,
   color,
+  reducedMotion,
 }: {
   data: { name: string; qty?: number; profit?: number }[];
   dataKey: "qty" | "profit";
   valueFormat: (n: number) => string;
   color: string;
+  reducedMotion: boolean;
 }) {
   const config: ChartConfig = { [dataKey]: { label: dataKey === "qty" ? "Unidades" : "Lucro", color } };
 
@@ -380,7 +448,13 @@ function RankingChart({
         <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} tickFormatter={valueFormat} />
         <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={11} width={110} />
         <ChartTooltip content={<ChartTooltipContent formatter={(v) => valueFormat(Number(v))} />} />
-        <Bar dataKey={dataKey} fill={`var(--color-${dataKey})`} radius={4} isAnimationActive animationDuration={900} />
+        <Bar
+          dataKey={dataKey}
+          fill={`var(--color-${dataKey})`}
+          radius={4}
+          isAnimationActive={!reducedMotion}
+          animationDuration={CHART_TRANSITION_MS}
+        />
       </BarChart>
     </ChartContainer>
   );

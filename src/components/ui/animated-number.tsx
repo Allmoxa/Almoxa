@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/hooks/use-reduced-motion";
 
 export function AnimatedNumber({
   value,
@@ -11,8 +12,15 @@ export function AnimatedNumber({
 }) {
   const [display, setDisplay] = useState(0);
   const fromRef = useRef(0);
+  const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      setDisplay(value);
+      fromRef.current = value;
+      return;
+    }
+
     const from = fromRef.current;
     const start = performance.now();
 
@@ -29,7 +37,7 @@ export function AnimatedNumber({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [value, duration]);
+  }, [value, duration, reducedMotion]);
 
   return <>{format(display)}</>;
 }
