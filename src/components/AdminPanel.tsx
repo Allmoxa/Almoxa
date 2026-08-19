@@ -24,6 +24,20 @@ const ADMIN_SECTIONS = [
 
 type SectionKey = (typeof ADMIN_SECTIONS)[number]["key"];
 
+/**
+ * Largura-alvo por aba (referência, não valor rígido) -- vira a custom
+ * property --panel-w que o CSS clampa contra a viewport (ver .admin-panel-
+ * window em styles.css). O layout do framer-motion anima a diferença.
+ */
+const SECTION_WIDTH: Record<SectionKey, number> = {
+  overview: 960,
+  users: 1200,
+  invites: 940,
+  roles: 1120,
+  business: 820,
+  activity: 1060,
+};
+
 const formSchema = z
   .object({
     email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
@@ -132,6 +146,8 @@ export function AdminPanel({
     setMovementsPage(1);
   };
 
+  const isBusy = isLoading || (selected !== null && detail.isLoading);
+
   const usersPageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
   const currentUsersPage = Math.min(usersPage, usersPageCount);
   const usersFirstIndex = (currentUsersPage - 1) * PAGE_SIZE;
@@ -228,15 +244,26 @@ export function AdminPanel({
                 }}
               >
                 <motion.div
-                  className="paper-panel flex h-full w-full flex-col overflow-hidden rounded-none sm:h-auto sm:max-h-[85vh] sm:w-full sm:max-w-4xl sm:rounded-2xl"
-                  style={{ boxShadow: "var(--shadow-lift)" }}
+                  layout
+                  className="admin-panel-window paper-panel flex h-full w-full flex-col overflow-hidden rounded-none sm:h-auto sm:max-h-[calc(100dvh-48px)] sm:min-w-[min(680px,calc(100vw-48px))] sm:max-w-[min(1280px,calc(100vw-48px))] sm:rounded-2xl"
+                  style={
+                    {
+                      boxShadow: "var(--shadow-lift)",
+                      "--panel-w": `${SECTION_WIDTH[section]}px`,
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } as any
+                  }
                   initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 20 }}
                   animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
                   exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 10 }}
                   transition={
                     shouldReduceMotion
-                      ? { duration: 0.15 }
-                      : { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
+                      ? { duration: 0.15, layout: { duration: 0.001 } }
+                      : {
+                          duration: 0.42,
+                          ease: [0.22, 1, 0.36, 1],
+                          layout: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+                        }
                   }
                 >
                   <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-6 py-5">
@@ -294,435 +321,568 @@ export function AdminPanel({
                       ))}
                     </nav>
 
-                    <div className="flex-1 overflow-y-auto p-6">
-                      {section === "overview" ? (
-                        <section>
-                          <h3 className="label-caps">Visão geral</h3>
-                          <div className="mt-3 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-                            {[
-                              { label: "Contas", value: String(totals.users) },
-                              { label: "Admins", value: String(totals.admins) },
-                              { label: "Comissionados", value: String(totals.comissionados) },
-                              { label: "Custo total", value: currency(totals.cost) },
-                            ].map((item) => (
-                              <div key={item.label} className="bg-card px-5 py-5">
-                                <p className="label-caps">{item.label}</p>
-                                <p className="mt-2 font-display text-2xl">{item.value}</p>
+                    <div className="flex-1 overflow-y-auto p-6" aria-busy={isBusy || undefined}>
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.div
+                          key={section}
+                          layout
+                          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+                          transition={{
+                            duration: shouldReduceMotion ? 0.08 : 0.16,
+                            ease: "easeOut",
+                          }}
+                        >
+                          {section === "overview" ? (
+                            <section>
+                              <h3 className="label-caps">Visão geral</h3>
+                              <div className="mt-3 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+                                {[
+                                  { label: "Contas", value: String(totals.users) },
+                                  { label: "Admins", value: String(totals.admins) },
+                                  { label: "Comissionados", value: String(totals.comissionados) },
+                                  { label: "Custo total", value: currency(totals.cost) },
+                                ].map((item) => (
+                                  <div key={item.label} className="bg-card px-5 py-5">
+                                    <p className="label-caps">{item.label}</p>
+                                    <p className="mt-2 font-display text-2xl">{item.value}</p>
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        </section>
-                      ) : null}
+                            </section>
+                          ) : null}
 
-                      {section === "users" ? (
-                        selected ? (
-                          <section>
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <button
-                                  type="button"
-                                  onClick={() => setSelected(null)}
-                                  className="label-caps text-muted-foreground transition-colors hover:text-foreground"
-                                >
-                                  ← Voltar
-                                </button>
-                                <h2 className="mt-2 text-2xl">{currentUser?.email ?? "…"}</h2>
-                              </div>
-                            </div>
-
-                            {detail.isLoading ? (
-                              <p className="py-10 text-center text-sm text-muted-foreground">
-                                Carregando…
-                              </p>
-                            ) : detail.isError ? (
-                              <p className="py-10 text-center text-sm text-destructive">
-                                Não foi possível carregar este usuário.
-                              </p>
-                            ) : detail.data ? (
-                              <>
-                                <section className="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-                                  {[
-                                    { label: "Unidades", value: qty(detail.data.user.units) },
-                                    {
-                                      label: "Custo em estoque",
-                                      value: currency(detail.data.user.cost),
-                                    },
-                                    {
-                                      label: "Venda potencial",
-                                      value: currency(detail.data.user.revenue),
-                                    },
-                                    {
-                                      label: "Lucro potencial",
-                                      value: currency(
-                                        detail.data.user.revenue - detail.data.user.cost,
-                                      ),
-                                    },
-                                  ].map((item) => (
-                                    <div key={item.label} className="bg-card px-4 py-4">
-                                      <p className="label-caps">{item.label}</p>
-                                      <p className="mt-1 font-display text-xl">{item.value}</p>
-                                    </div>
-                                  ))}
-                                </section>
-
-                                <h3 className="label-caps mt-8">Produtos</h3>
-                                {detail.data.products.length === 0 ? (
-                                  <p className="py-6 text-sm text-muted-foreground">
-                                    Este usuário ainda não cadastrou produtos.
-                                  </p>
-                                ) : (
-                                  <>
-                                    <div className="overflow-x-auto">
-                                      <table className="mt-3 w-full text-sm">
-                                        <thead>
-                                          <tr className="border-b border-border text-left">
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Produto
-                                            </th>
-                                            <th className="label-caps px-2 py-2 text-right font-normal">
-                                              Qtd.
-                                            </th>
-                                            <th className="label-caps px-2 py-2 text-right font-normal">
-                                              Compra
-                                            </th>
-                                            <th className="label-caps px-2 py-2 text-right font-normal">
-                                              Venda
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {visibleProducts.map((product) => (
-                                            <tr
-                                              key={product.id}
-                                              className="border-b border-border last:border-0"
-                                            >
-                                              <td className="px-2 py-3">
-                                                <p className="font-medium">{product.name}</p>
-                                                <p className="font-mono text-xs text-muted-foreground">
-                                                  {product.sku}
-                                                </p>
-                                              </td>
-                                              <td className="px-2 py-3 text-right tabular-nums">
-                                                {qty(product.quantity)}
-                                              </td>
-                                              <td className="px-2 py-3 text-right tabular-nums">
-                                                {currency(product.purchase_price)}
-                                              </td>
-                                              <td className="px-2 py-3 text-right tabular-nums">
-                                                {currency(product.sale_price)}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                    {productsPageCount > 1 ? (
-                                      <div className="mt-3">
-                                        <PaginationNav
-                                          currentPage={currentProductsPage}
-                                          pageCount={productsPageCount}
-                                          onChange={setProductsPage}
-                                          label="Paginação de produtos do usuário"
-                                        />
-                                      </div>
-                                    ) : null}
-                                  </>
-                                )}
-
-                                <h3 className="label-caps mt-8">Movimentações</h3>
-                                {detail.data.movements.length === 0 ? (
-                                  <p className="py-6 text-sm text-muted-foreground">
-                                    Nenhuma movimentação registrada.
-                                  </p>
-                                ) : (
-                                  <>
-                                    <div className="overflow-x-auto">
-                                      <table className="mt-3 w-full text-sm">
-                                        <thead>
-                                          <tr className="border-b border-border text-left">
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Quando
-                                            </th>
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Produto
-                                            </th>
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Tipo
-                                            </th>
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Origem
-                                            </th>
-                                            <th className="label-caps px-2 py-2 font-normal">
-                                              Quem lançou
-                                            </th>
-                                            <th className="label-caps px-2 py-2 text-right font-normal">
-                                              Qtd.
-                                            </th>
-                                            <th className="label-caps px-2 py-2 text-right font-normal">
-                                              Valor
-                                            </th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {visibleMovements.map((movement) => (
-                                            <tr
-                                              key={movement.id}
-                                              className={`border-b border-border last:border-0 ${
-                                                movement.reversed_at ? "opacity-55" : ""
-                                              }`}
-                                            >
-                                              <td className="px-2 py-3 whitespace-nowrap">
-                                                {dateTime(movement.created_at)}
-                                              </td>
-                                              <td
-                                                className={`px-2 py-3 ${movement.reversed_at ? "line-through" : ""}`}
-                                              >
-                                                {movement.products?.name ?? "—"}
-                                              </td>
-                                              <td
-                                                className={`px-2 py-3 ${movement.kind === "in" ? "text-success" : "text-destructive"}`}
-                                              >
-                                                {movement.kind === "in" ? "Entrada" : "Saída"}
-                                              </td>
-                                              <td className="px-2 py-3 text-muted-foreground">
-                                                {sourceLabel[movement.source]}
-                                              </td>
-                                              <td className="px-2 py-3 text-xs text-muted-foreground">
-                                                {movement.created_by_email ?? "—"}
-                                              </td>
-                                              <td className="px-2 py-3 text-right tabular-nums">
-                                                {qty(movement.quantity)}
-                                              </td>
-                                              <td className="px-2 py-3 text-right tabular-nums">
-                                                {currency(movement.quantity * movement.unit_price)}
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
-                                    </div>
-                                    {movementsPageCount > 1 ? (
-                                      <div className="mt-3">
-                                        <PaginationNav
-                                          currentPage={currentMovementsPage}
-                                          pageCount={movementsPageCount}
-                                          onChange={setMovementsPage}
-                                          label="Paginação de movimentações do usuário"
-                                        />
-                                      </div>
-                                    ) : null}
-                                  </>
-                                )}
-                              </>
-                            ) : null}
-                          </section>
-                        ) : (
-                          <section>
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <h3 className="label-caps">Usuários</h3>
-                              <button
-                                onClick={() => setCreating((v) => !v)}
-                                className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-                              >
-                                {creating ? "Cancelar" : "Novo usuário"}
-                              </button>
-                            </div>
-
-                            {creating ? (
-                              <form
-                                className="paper-panel mt-4 grid gap-4 p-5 sm:grid-cols-4"
-                                onSubmit={(event) => {
-                                  event.preventDefault();
-                                  const form = new FormData(event.currentTarget);
-                                  const parsed = formSchema.safeParse({
-                                    email: form.get("email"),
-                                    password: form.get("password"),
-                                    role: newRole,
-                                    storeOwnerId:
-                                      newRole === "comissionado" ? newStore || null : null,
-                                  });
-                                  if (!parsed.success) {
-                                    toast.error(
-                                      parsed.error.issues[0]?.message ?? "Dados inválidos",
-                                    );
-                                    return;
-                                  }
-                                  addUser.mutate(parsed.data);
-                                }}
-                              >
-                                <div className="sm:col-span-2">
-                                  <label className="label-caps" htmlFor="admin-panel-new-email">
-                                    E-mail
-                                  </label>
-                                  <input
-                                    id="admin-panel-new-email"
-                                    name="email"
-                                    type="email"
-                                    className={`mt-2 ${inputClass}`}
-                                    placeholder="pessoa@empresa.com"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="label-caps" htmlFor="admin-panel-new-password">
-                                    Senha provisória
-                                  </label>
-                                  <input
-                                    id="admin-panel-new-password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    className={`mt-2 ${inputClass}`}
-                                    placeholder="mín. 6 caracteres"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="label-caps" htmlFor="admin-panel-new-role">
-                                    Papel
-                                  </label>
-                                  <select
-                                    id="admin-panel-new-role"
-                                    value={newRole}
-                                    onChange={(event) => setNewRole(event.target.value as AppRole)}
-                                    className={`mt-2 ${inputClass}`}
-                                  >
-                                    <option value="admin">{roleLabel.admin}</option>
-                                    <option value="comissionado">{roleLabel.comissionado}</option>
-                                    <option value="onisciente">{roleLabel.onisciente}</option>
-                                  </select>
-                                </div>
-
-                                {newRole === "comissionado" ? (
-                                  <div className="sm:col-span-2">
-                                    <label className="label-caps" htmlFor="admin-panel-new-store">
-                                      Vende o estoque de
-                                    </label>
-                                    <select
-                                      id="admin-panel-new-store"
-                                      value={newStore}
-                                      onChange={(event) => setNewStore(event.target.value)}
-                                      className={`mt-2 ${inputClass}`}
+                          {section === "users" ? (
+                            selected ? (
+                              <section>
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelected(null)}
+                                      className="label-caps text-muted-foreground transition-colors hover:text-foreground"
                                     >
-                                      <option value="">Escolha a loja…</option>
-                                      {lojas.map((loja) => (
-                                        <option key={loja.id} value={loja.id}>
-                                          {loja.email}
-                                        </option>
+                                      ← Voltar
+                                    </button>
+                                    <h2 className="mt-2 text-2xl">{currentUser?.email ?? "…"}</h2>
+                                  </div>
+                                </div>
+
+                                {detail.isLoading ? (
+                                  <p className="py-10 text-center text-sm text-muted-foreground">
+                                    Carregando…
+                                  </p>
+                                ) : detail.isError ? (
+                                  <p className="py-10 text-center text-sm text-destructive">
+                                    Não foi possível carregar este usuário.
+                                  </p>
+                                ) : detail.data ? (
+                                  <>
+                                    <section className="mt-6 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+                                      {[
+                                        { label: "Unidades", value: qty(detail.data.user.units) },
+                                        {
+                                          label: "Custo em estoque",
+                                          value: currency(detail.data.user.cost),
+                                        },
+                                        {
+                                          label: "Venda potencial",
+                                          value: currency(detail.data.user.revenue),
+                                        },
+                                        {
+                                          label: "Lucro potencial",
+                                          value: currency(
+                                            detail.data.user.revenue - detail.data.user.cost,
+                                          ),
+                                        },
+                                      ].map((item) => (
+                                        <div key={item.label} className="bg-card px-4 py-4">
+                                          <p className="label-caps">{item.label}</p>
+                                          <p className="mt-1 font-display text-xl">{item.value}</p>
+                                        </div>
                                       ))}
-                                    </select>
+                                    </section>
+
+                                    <h3 className="label-caps mt-8">Produtos</h3>
+                                    {detail.data.products.length === 0 ? (
+                                      <p className="py-6 text-sm text-muted-foreground">
+                                        Este usuário ainda não cadastrou produtos.
+                                      </p>
+                                    ) : (
+                                      <>
+                                        <div className="overflow-x-auto">
+                                          <table className="mt-3 w-full text-sm">
+                                            <thead>
+                                              <tr className="border-b border-border text-left">
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Produto
+                                                </th>
+                                                <th className="label-caps px-2 py-2 text-right font-normal">
+                                                  Qtd.
+                                                </th>
+                                                <th className="label-caps px-2 py-2 text-right font-normal">
+                                                  Compra
+                                                </th>
+                                                <th className="label-caps px-2 py-2 text-right font-normal">
+                                                  Venda
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {visibleProducts.map((product) => (
+                                                <tr
+                                                  key={product.id}
+                                                  className="border-b border-border last:border-0"
+                                                >
+                                                  <td className="px-2 py-3">
+                                                    <p className="font-medium">{product.name}</p>
+                                                    <p className="font-mono text-xs text-muted-foreground">
+                                                      {product.sku}
+                                                    </p>
+                                                  </td>
+                                                  <td className="px-2 py-3 text-right tabular-nums">
+                                                    {qty(product.quantity)}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-right tabular-nums">
+                                                    {currency(product.purchase_price)}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-right tabular-nums">
+                                                    {currency(product.sale_price)}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                        {productsPageCount > 1 ? (
+                                          <div className="mt-3">
+                                            <PaginationNav
+                                              currentPage={currentProductsPage}
+                                              pageCount={productsPageCount}
+                                              onChange={setProductsPage}
+                                              label="Paginação de produtos do usuário"
+                                            />
+                                          </div>
+                                        ) : null}
+                                      </>
+                                    )}
+
+                                    <h3 className="label-caps mt-8">Movimentações</h3>
+                                    {detail.data.movements.length === 0 ? (
+                                      <p className="py-6 text-sm text-muted-foreground">
+                                        Nenhuma movimentação registrada.
+                                      </p>
+                                    ) : (
+                                      <>
+                                        <div className="overflow-x-auto">
+                                          <table className="mt-3 w-full text-sm">
+                                            <thead>
+                                              <tr className="border-b border-border text-left">
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Quando
+                                                </th>
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Produto
+                                                </th>
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Tipo
+                                                </th>
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Origem
+                                                </th>
+                                                <th className="label-caps px-2 py-2 font-normal">
+                                                  Quem lançou
+                                                </th>
+                                                <th className="label-caps px-2 py-2 text-right font-normal">
+                                                  Qtd.
+                                                </th>
+                                                <th className="label-caps px-2 py-2 text-right font-normal">
+                                                  Valor
+                                                </th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {visibleMovements.map((movement) => (
+                                                <tr
+                                                  key={movement.id}
+                                                  className={`border-b border-border last:border-0 ${
+                                                    movement.reversed_at ? "opacity-55" : ""
+                                                  }`}
+                                                >
+                                                  <td className="px-2 py-3 whitespace-nowrap">
+                                                    {dateTime(movement.created_at)}
+                                                  </td>
+                                                  <td
+                                                    className={`px-2 py-3 ${movement.reversed_at ? "line-through" : ""}`}
+                                                  >
+                                                    {movement.products?.name ?? "—"}
+                                                  </td>
+                                                  <td
+                                                    className={`px-2 py-3 ${movement.kind === "in" ? "text-success" : "text-destructive"}`}
+                                                  >
+                                                    {movement.kind === "in" ? "Entrada" : "Saída"}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-muted-foreground">
+                                                    {sourceLabel[movement.source]}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-xs text-muted-foreground">
+                                                    {movement.created_by_email ?? "—"}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-right tabular-nums">
+                                                    {qty(movement.quantity)}
+                                                  </td>
+                                                  <td className="px-2 py-3 text-right tabular-nums">
+                                                    {currency(
+                                                      movement.quantity * movement.unit_price,
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                        {movementsPageCount > 1 ? (
+                                          <div className="mt-3">
+                                            <PaginationNav
+                                              currentPage={currentMovementsPage}
+                                              pageCount={movementsPageCount}
+                                              onChange={setMovementsPage}
+                                              label="Paginação de movimentações do usuário"
+                                            />
+                                          </div>
+                                        ) : null}
+                                      </>
+                                    )}
+                                  </>
+                                ) : null}
+                              </section>
+                            ) : (
+                              <section>
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                  <h3 className="label-caps">Usuários</h3>
+                                  <button
+                                    onClick={() => setCreating((v) => !v)}
+                                    className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                                  >
+                                    {creating ? "Cancelar" : "Novo usuário"}
+                                  </button>
+                                </div>
+
+                                {creating ? (
+                                  <form
+                                    className="paper-panel mt-4 grid gap-4 p-5 sm:grid-cols-4"
+                                    onSubmit={(event) => {
+                                      event.preventDefault();
+                                      const form = new FormData(event.currentTarget);
+                                      const parsed = formSchema.safeParse({
+                                        email: form.get("email"),
+                                        password: form.get("password"),
+                                        role: newRole,
+                                        storeOwnerId:
+                                          newRole === "comissionado" ? newStore || null : null,
+                                      });
+                                      if (!parsed.success) {
+                                        toast.error(
+                                          parsed.error.issues[0]?.message ?? "Dados inválidos",
+                                        );
+                                        return;
+                                      }
+                                      addUser.mutate(parsed.data);
+                                    }}
+                                  >
+                                    <div className="sm:col-span-2">
+                                      <label className="label-caps" htmlFor="admin-panel-new-email">
+                                        E-mail
+                                      </label>
+                                      <input
+                                        id="admin-panel-new-email"
+                                        name="email"
+                                        type="email"
+                                        className={`mt-2 ${inputClass}`}
+                                        placeholder="pessoa@empresa.com"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label
+                                        className="label-caps"
+                                        htmlFor="admin-panel-new-password"
+                                      >
+                                        Senha provisória
+                                      </label>
+                                      <input
+                                        id="admin-panel-new-password"
+                                        name="password"
+                                        type="password"
+                                        autoComplete="new-password"
+                                        className={`mt-2 ${inputClass}`}
+                                        placeholder="mín. 6 caracteres"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="label-caps" htmlFor="admin-panel-new-role">
+                                        Papel
+                                      </label>
+                                      <select
+                                        id="admin-panel-new-role"
+                                        value={newRole}
+                                        onChange={(event) =>
+                                          setNewRole(event.target.value as AppRole)
+                                        }
+                                        className={`mt-2 ${inputClass}`}
+                                      >
+                                        <option value="admin">{roleLabel.admin}</option>
+                                        <option value="comissionado">
+                                          {roleLabel.comissionado}
+                                        </option>
+                                        <option value="onisciente">{roleLabel.onisciente}</option>
+                                      </select>
+                                    </div>
+
+                                    {newRole === "comissionado" ? (
+                                      <div className="sm:col-span-2">
+                                        <label
+                                          className="label-caps"
+                                          htmlFor="admin-panel-new-store"
+                                        >
+                                          Vende o estoque de
+                                        </label>
+                                        <select
+                                          id="admin-panel-new-store"
+                                          value={newStore}
+                                          onChange={(event) => setNewStore(event.target.value)}
+                                          className={`mt-2 ${inputClass}`}
+                                        >
+                                          <option value="">Escolha a loja…</option>
+                                          {lojas.map((loja) => (
+                                            <option key={loja.id} value={loja.id}>
+                                              {loja.email}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    ) : null}
+
+                                    <div className="sm:col-span-4">
+                                      <button
+                                        type="submit"
+                                        disabled={addUser.isPending}
+                                        className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                      >
+                                        Criar usuário
+                                      </button>
+                                      <p className="mt-3 text-xs text-muted-foreground">
+                                        {roleHint[newRole]} A conta já nasce com o e-mail confirmado
+                                        — peça para a pessoa trocar a senha no primeiro acesso.
+                                      </p>
+                                    </div>
+                                  </form>
+                                ) : null}
+
+                                {usersPageCount > 1 ? (
+                                  <div className="mt-6 flex items-center justify-between gap-4">
+                                    <p className="label-caps">
+                                      {usersFirstIndex + 1}–{usersFirstIndex + visibleUsers.length}{" "}
+                                      de {users.length} usuários
+                                    </p>
+                                    <PaginationNav
+                                      currentPage={currentUsersPage}
+                                      pageCount={usersPageCount}
+                                      onChange={setUsersPage}
+                                      label="Paginação de usuários"
+                                    />
                                   </div>
                                 ) : null}
 
-                                <div className="sm:col-span-4">
-                                  <button
-                                    type="submit"
-                                    disabled={addUser.isPending}
-                                    className="min-h-11 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                {isLoading ? (
+                                  <div
+                                    className={`space-y-2 ${usersPageCount > 1 ? "mt-4" : "mt-6"}`}
+                                    aria-hidden="true"
                                   >
-                                    Criar usuário
-                                  </button>
-                                  <p className="mt-3 text-xs text-muted-foreground">
-                                    {roleHint[newRole]} A conta já nasce com o e-mail confirmado —
-                                    peça para a pessoa trocar a senha no primeiro acesso.
+                                    {Array.from({ length: 6 }, (_, i) => (
+                                      <div
+                                        key={i}
+                                        className="paper-panel h-16 w-full animate-pulse bg-secondary/40"
+                                      />
+                                    ))}
+                                  </div>
+                                ) : users.length === 0 ? (
+                                  <p
+                                    className={`paper-panel px-5 py-12 text-center text-sm text-muted-foreground ${usersPageCount > 1 ? "mt-4" : "mt-6"}`}
+                                  >
+                                    Nenhum usuário cadastrado.
                                   </p>
-                                </div>
-                              </form>
-                            ) : null}
+                                ) : (
+                                  <>
+                                    {/* Desktop/tablet: tabela de verdade, com scroll horizontal só nela. */}
+                                    <div
+                                      className={`paper-panel hidden overflow-x-auto md:block ${usersPageCount > 1 ? "mt-4" : "mt-6"}`}
+                                    >
+                                      <table className="w-full min-w-[880px] text-sm">
+                                        <thead>
+                                          <tr className="border-b border-border text-left">
+                                            <th className="label-caps sticky left-0 z-10 min-w-[240px] bg-card px-5 py-3 font-normal">
+                                              Usuário
+                                            </th>
+                                            <th className="label-caps min-w-[130px] px-3 py-3 font-normal">
+                                              Papel
+                                            </th>
+                                            <th className="label-caps px-3 py-3 text-right font-normal">
+                                              Produtos
+                                            </th>
+                                            <th className="label-caps px-3 py-3 text-right font-normal">
+                                              Unidades
+                                            </th>
+                                            <th className="label-caps min-w-[110px] px-3 py-3 text-right font-normal">
+                                              Custo
+                                            </th>
+                                            <th className="label-caps px-3 py-3 text-right font-normal">
+                                              Mov.
+                                            </th>
+                                            <th className="min-w-[220px] px-5 py-3" />
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {visibleUsers.map((user) => (
+                                            <tr
+                                              key={user.id}
+                                              className="border-b border-border last:border-0"
+                                            >
+                                              <td className="sticky left-0 z-10 bg-card px-5 py-4">
+                                                <p className="font-medium break-all">
+                                                  {user.email}
+                                                </p>
+                                                <p className="text-xs whitespace-nowrap text-muted-foreground">
+                                                  Desde {dateTime(user.created_at)}
+                                                  {user.last_sign_in_at
+                                                    ? ` · último acesso ${dateTime(user.last_sign_in_at)}`
+                                                    : " · nunca acessou"}
+                                                </p>
+                                              </td>
+                                              <td className="px-3 py-4">
+                                                <span
+                                                  className={`label-caps whitespace-nowrap rounded-full px-2.5 py-1 ${
+                                                    user.role === "onisciente"
+                                                      ? "bg-primary text-primary-foreground"
+                                                      : "bg-secondary text-muted-foreground"
+                                                  }`}
+                                                >
+                                                  {roleLabel[user.role]}
+                                                </span>
+                                                {user.storeOwnerEmail ? (
+                                                  <p className="mt-1 text-xs text-muted-foreground">
+                                                    vende de {user.storeOwnerEmail}
+                                                  </p>
+                                                ) : null}
+                                              </td>
+                                              <td className="px-3 py-4 text-right tabular-nums">
+                                                {user.products}
+                                              </td>
+                                              <td className="px-3 py-4 text-right tabular-nums">
+                                                {qty(user.units)}
+                                              </td>
+                                              <td className="px-3 py-4 text-right whitespace-nowrap tabular-nums">
+                                                {currency(user.cost)}
+                                              </td>
+                                              <td className="px-3 py-4 text-right tabular-nums">
+                                                {user.movements}
+                                              </td>
+                                              <td className="px-5 py-4">
+                                                <div className="flex items-center justify-end gap-2">
+                                                  <button
+                                                    onClick={() => openUser(user.id)}
+                                                    className="min-h-11 rounded-md border border-border-strong px-2.5 text-xs whitespace-nowrap transition-colors hover:bg-secondary"
+                                                  >
+                                                    Ver estoque
+                                                  </button>
+                                                  {user.role === "comissionado" ? null : (
+                                                    <button
+                                                      onClick={() => enter.mutate(user.id)}
+                                                      disabled={enter.isPending}
+                                                      className="min-h-11 rounded-md bg-primary px-2.5 text-xs font-medium whitespace-nowrap text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                                    >
+                                                      Adentrar
+                                                    </button>
+                                                  )}
+                                                  <button
+                                                    onClick={() => {
+                                                      if (
+                                                        confirm(
+                                                          `Apagar a conta de ${user.email}? Essa ação não pode ser desfeita.`,
+                                                        )
+                                                      )
+                                                        removeUser.mutate(user.id);
+                                                    }}
+                                                    disabled={removeUser.isPending}
+                                                    className="min-h-11 px-1 text-xs whitespace-nowrap text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                                                  >
+                                                    Apagar
+                                                  </button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
 
-                            {usersPageCount > 1 ? (
-                              <div className="mt-6 flex items-center justify-between gap-4">
-                                <p className="label-caps">
-                                  {usersFirstIndex + 1}–{usersFirstIndex + visibleUsers.length} de{" "}
-                                  {users.length} usuários
-                                </p>
-                                <PaginationNav
-                                  currentPage={currentUsersPage}
-                                  pageCount={usersPageCount}
-                                  onChange={setUsersPage}
-                                  label="Paginação de usuários"
-                                />
-                              </div>
-                            ) : null}
+                                    {/* Celular: cada usuário vira um card, nada de tabela espremida. */}
+                                    <div
+                                      className={`space-y-3 md:hidden ${usersPageCount > 1 ? "mt-4" : "mt-6"}`}
+                                    >
+                                      {visibleUsers.map((user) => (
+                                        <div key={user.id} className="paper-panel p-4">
+                                          <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <p className="font-medium break-all">{user.email}</p>
+                                              <p className="mt-1 text-xs text-muted-foreground">
+                                                Desde {dateTime(user.created_at)}
+                                                {user.last_sign_in_at
+                                                  ? ` · último acesso ${dateTime(user.last_sign_in_at)}`
+                                                  : " · nunca acessou"}
+                                              </p>
+                                              {user.storeOwnerEmail ? (
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                  vende de {user.storeOwnerEmail}
+                                                </p>
+                                              ) : null}
+                                            </div>
+                                            <span
+                                              className={`label-caps shrink-0 rounded-full px-2.5 py-1 ${
+                                                user.role === "onisciente"
+                                                  ? "bg-primary text-primary-foreground"
+                                                  : "bg-secondary text-muted-foreground"
+                                              }`}
+                                            >
+                                              {roleLabel[user.role]}
+                                            </span>
+                                          </div>
 
-                            <div
-                              className={`paper-panel overflow-x-auto ${usersPageCount > 1 ? "mt-4" : "mt-6"}`}
-                            >
-                              {isLoading ? (
-                                <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-                                  Carregando…
-                                </p>
-                              ) : users.length === 0 ? (
-                                <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-                                  Nenhum usuário cadastrado.
-                                </p>
-                              ) : (
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b border-border text-left">
-                                      <th className="label-caps px-5 py-3 font-normal">Usuário</th>
-                                      <th className="label-caps px-3 py-3 font-normal">Papel</th>
-                                      <th className="label-caps px-3 py-3 text-right font-normal">
-                                        Produtos
-                                      </th>
-                                      <th className="label-caps px-3 py-3 text-right font-normal">
-                                        Unidades
-                                      </th>
-                                      <th className="label-caps px-3 py-3 text-right font-normal">
-                                        Custo
-                                      </th>
-                                      <th className="label-caps px-3 py-3 text-right font-normal">
-                                        Mov.
-                                      </th>
-                                      <th className="px-5 py-3" />
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {visibleUsers.map((user) => (
-                                      <tr
-                                        key={user.id}
-                                        className="border-b border-border last:border-0"
-                                      >
-                                        <td className="px-5 py-4">
-                                          <p className="font-medium">{user.email}</p>
-                                          <p className="text-xs text-muted-foreground">
-                                            Desde {dateTime(user.created_at)}
-                                            {user.last_sign_in_at
-                                              ? ` · último acesso ${dateTime(user.last_sign_in_at)}`
-                                              : " · nunca acessou"}
-                                          </p>
-                                        </td>
-                                        <td className="px-3 py-4">
-                                          <span
-                                            className={`label-caps rounded-full px-2.5 py-1 ${
-                                              user.role === "onisciente"
-                                                ? "bg-primary text-primary-foreground"
-                                                : "bg-secondary text-muted-foreground"
-                                            }`}
-                                          >
-                                            {roleLabel[user.role]}
-                                          </span>
-                                          {user.storeOwnerEmail ? (
-                                            <p className="mt-1 text-xs text-muted-foreground">
-                                              vende de {user.storeOwnerEmail}
-                                            </p>
-                                          ) : null}
-                                        </td>
-                                        <td className="px-3 py-4 text-right tabular-nums">
-                                          {user.products}
-                                        </td>
-                                        <td className="px-3 py-4 text-right tabular-nums">
-                                          {qty(user.units)}
-                                        </td>
-                                        <td className="px-3 py-4 text-right tabular-nums">
-                                          {currency(user.cost)}
-                                        </td>
-                                        <td className="px-3 py-4 text-right tabular-nums">
-                                          {user.movements}
-                                        </td>
-                                        <td className="px-5 py-4">
-                                          <div className="flex items-center justify-end gap-2">
+                                          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-border pt-3 text-sm sm:grid-cols-4">
+                                            <div>
+                                              <dt className="label-caps">Produtos</dt>
+                                              <dd className="tabular-nums">{user.products}</dd>
+                                            </div>
+                                            <div>
+                                              <dt className="label-caps">Unidades</dt>
+                                              <dd className="tabular-nums">{qty(user.units)}</dd>
+                                            </div>
+                                            <div>
+                                              <dt className="label-caps">Custo</dt>
+                                              <dd className="tabular-nums whitespace-nowrap">
+                                                {currency(user.cost)}
+                                              </dd>
+                                            </div>
+                                            <div>
+                                              <dt className="label-caps">Mov.</dt>
+                                              <dd className="tabular-nums">{user.movements}</dd>
+                                            </div>
+                                          </dl>
+
+                                          <div className="mt-4 flex flex-wrap items-center gap-2">
                                             <button
                                               onClick={() => openUser(user.id)}
-                                              className="min-h-11 rounded-md border border-border-strong px-2.5 text-xs transition-colors hover:bg-secondary"
+                                              className="min-h-11 rounded-md border border-border-strong px-3 text-xs transition-colors hover:bg-secondary"
                                             >
                                               Ver estoque
                                             </button>
@@ -730,7 +890,7 @@ export function AdminPanel({
                                               <button
                                                 onClick={() => enter.mutate(user.id)}
                                                 disabled={enter.isPending}
-                                                className="min-h-11 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                                className="min-h-11 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
                                               >
                                                 Adentrar
                                               </button>
@@ -745,117 +905,120 @@ export function AdminPanel({
                                                   removeUser.mutate(user.id);
                                               }}
                                               disabled={removeUser.isPending}
-                                              className="min-h-11 px-1 text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                                              className="min-h-11 px-2 text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
                                             >
                                               Apagar
                                             </button>
                                           </div>
-                                        </td>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+
+                                {usersPageCount > 1 ? (
+                                  <div className="mt-4">
+                                    <PaginationNav
+                                      currentPage={currentUsersPage}
+                                      pageCount={usersPageCount}
+                                      onChange={setUsersPage}
+                                      label="Paginação de usuários"
+                                    />
+                                  </div>
+                                ) : null}
+                              </section>
+                            )
+                          ) : null}
+
+                          {section === "invites" ? (
+                            <section>
+                              <h3 className="label-caps">Convites</h3>
+                              <p className="mt-3 max-w-md text-sm text-muted-foreground">
+                                Convite por e-mail ainda não existe no Almoxá. Por enquanto, crie o
+                                acesso diretamente pela aba Usuários.
+                              </p>
+                            </section>
+                          ) : null}
+
+                          {section === "roles" ? (
+                            <section>
+                              <h3 className="label-caps">Cargos e permissões</h3>
+                              <div className="mt-3 space-y-3">
+                                {(Object.keys(roleLabel) as AppRole[]).map((role) => (
+                                  <div
+                                    key={role}
+                                    className="paper-panel flex items-start justify-between gap-4 p-4"
+                                  >
+                                    <div>
+                                      <p className="font-medium">{roleLabel[role]}</p>
+                                      <p className="mt-1 text-sm text-muted-foreground">
+                                        {roleHint[role]}
+                                      </p>
+                                    </div>
+                                    <span className="label-caps shrink-0 rounded-full bg-secondary px-2.5 py-1 text-muted-foreground">
+                                      {roleCounts[role] ?? 0} conta
+                                      {roleCounts[role] === 1 ? "" : "s"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          ) : null}
+
+                          {section === "business" ? (
+                            <section>
+                              <h3 className="label-caps">Dados do negócio</h3>
+                              <p className="mt-3 max-w-md text-sm text-muted-foreground">
+                                Ainda não há um cadastro de dados do negócio (razão social,
+                                endereço, contato) no Almoxá.
+                              </p>
+                            </section>
+                          ) : null}
+
+                          {section === "activity" ? (
+                            <section>
+                              <h3 className="label-caps">Histórico de atividades</h3>
+                              {activityRanking.length === 0 ? (
+                                <p className="mt-3 text-sm text-muted-foreground">
+                                  Nenhuma movimentação registrada ainda.
+                                </p>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="mt-3 w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-border text-left">
+                                        <th className="label-caps px-2 py-2 font-normal">
+                                          Usuário
+                                        </th>
+                                        <th className="label-caps px-2 py-2 font-normal">Papel</th>
+                                        <th className="label-caps px-2 py-2 text-right font-normal">
+                                          Movimentações
+                                        </th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
-                            </div>
-
-                            {usersPageCount > 1 ? (
-                              <div className="mt-4">
-                                <PaginationNav
-                                  currentPage={currentUsersPage}
-                                  pageCount={usersPageCount}
-                                  onChange={setUsersPage}
-                                  label="Paginação de usuários"
-                                />
-                              </div>
-                            ) : null}
-                          </section>
-                        )
-                      ) : null}
-
-                      {section === "invites" ? (
-                        <section>
-                          <h3 className="label-caps">Convites</h3>
-                          <p className="mt-3 max-w-md text-sm text-muted-foreground">
-                            Convite por e-mail ainda não existe no Almoxá. Por enquanto, crie o
-                            acesso diretamente pela aba Usuários.
-                          </p>
-                        </section>
-                      ) : null}
-
-                      {section === "roles" ? (
-                        <section>
-                          <h3 className="label-caps">Cargos e permissões</h3>
-                          <div className="mt-3 space-y-3">
-                            {(Object.keys(roleLabel) as AppRole[]).map((role) => (
-                              <div
-                                key={role}
-                                className="paper-panel flex items-start justify-between gap-4 p-4"
-                              >
-                                <div>
-                                  <p className="font-medium">{roleLabel[role]}</p>
-                                  <p className="mt-1 text-sm text-muted-foreground">
-                                    {roleHint[role]}
-                                  </p>
+                                    </thead>
+                                    <tbody>
+                                      {activityRanking.map((user) => (
+                                        <tr
+                                          key={user.id}
+                                          className="border-b border-border last:border-0"
+                                        >
+                                          <td className="px-2 py-3">{user.email}</td>
+                                          <td className="px-2 py-3 text-muted-foreground">
+                                            {roleLabel[user.role]}
+                                          </td>
+                                          <td className="px-2 py-3 text-right tabular-nums">
+                                            {user.movements}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
                                 </div>
-                                <span className="label-caps shrink-0 rounded-full bg-secondary px-2.5 py-1 text-muted-foreground">
-                                  {roleCounts[role] ?? 0} conta{roleCounts[role] === 1 ? "" : "s"}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </section>
-                      ) : null}
-
-                      {section === "business" ? (
-                        <section>
-                          <h3 className="label-caps">Dados do negócio</h3>
-                          <p className="mt-3 max-w-md text-sm text-muted-foreground">
-                            Ainda não há um cadastro de dados do negócio (razão social, endereço,
-                            contato) no Almoxá.
-                          </p>
-                        </section>
-                      ) : null}
-
-                      {section === "activity" ? (
-                        <section>
-                          <h3 className="label-caps">Histórico de atividades</h3>
-                          {activityRanking.length === 0 ? (
-                            <p className="mt-3 text-sm text-muted-foreground">
-                              Nenhuma movimentação registrada ainda.
-                            </p>
-                          ) : (
-                            <div className="overflow-x-auto">
-                              <table className="mt-3 w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-border text-left">
-                                    <th className="label-caps px-2 py-2 font-normal">Usuário</th>
-                                    <th className="label-caps px-2 py-2 font-normal">Papel</th>
-                                    <th className="label-caps px-2 py-2 text-right font-normal">
-                                      Movimentações
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {activityRanking.map((user) => (
-                                    <tr
-                                      key={user.id}
-                                      className="border-b border-border last:border-0"
-                                    >
-                                      <td className="px-2 py-3">{user.email}</td>
-                                      <td className="px-2 py-3 text-muted-foreground">
-                                        {roleLabel[user.role]}
-                                      </td>
-                                      <td className="px-2 py-3 text-right tabular-nums">
-                                        {user.movements}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          )}
-                        </section>
-                      ) : null}
+                              )}
+                            </section>
+                          ) : null}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
                   </div>
                 </motion.div>

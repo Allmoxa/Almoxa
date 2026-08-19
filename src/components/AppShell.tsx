@@ -2,6 +2,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { Check, Menu, Moon, ShieldCheck, Settings, Sun } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { AdminPanel } from "@/components/AdminPanel";
+import { NavTabLabel } from "@/components/nav-tab-label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -85,9 +86,10 @@ export function AppShell({
               <Link
                 key={item.to}
                 to={item.to}
-                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground"
+                className="nav-tab relative rounded-md px-[18px] py-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                activeProps={{ className: "is-active text-foreground font-medium" }}
               >
-                {item.label}
+                {({ isActive }) => <NavTabLabel active={isActive}>{item.label}</NavTabLabel>}
               </Link>
             ))}
           </nav>
