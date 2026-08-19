@@ -1,5 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 type Step = {
   label: string;
@@ -12,10 +17,11 @@ const FACE_ANGLES = [0, 90, 180] as const;
 // caps at 340px on larger screens. All face sizing derives from this one variable.
 const CUBE_SIZE = "clamp(220px, 72vw, 340px)";
 const HALF = "calc(var(--cube-size) / 2)";
-const INTERVAL_MS = 4200;
 const TILT = -14;
 const OPEN_TILT = -66;
 const OPEN_DURATION_MS = 750;
+// Graus por pixel arrastado -- ~90deg (uma face) a cada ~257px de arraste.
+const DRAG_SENSITIVITY = 0.35;
 
 const CARDBOARD = "#C19A6C";
 const CARDBOARD_LIGHT = "#D8B78C";
@@ -24,6 +30,7 @@ const CARDBOARD_DARKER = "#8F6E4A";
 const INK = "#3B2A18";
 const INK_SOFT = "#6B4E30";
 const TAPE = "#EFE3CB";
+const INDICATOR_INK = "#3B2A1E";
 
 const corrugation: CSSProperties = {
   backgroundImage: `repeating-linear-gradient(90deg, rgba(59,42,24,0.09) 0px, rgba(59,42,24,0.09) 2px, transparent 2px, transparent 7px)`,
@@ -31,21 +38,53 @@ const corrugation: CSSProperties = {
 
 const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube-size)" };
 
+/** Quadrado torto com uma seta circular dentro -- mesmo espírito artesanal dos cantos da navbar. */
+function SpinIndicatorIcon() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+      <path
+        d="M4 5.2 L25 3.4 L26.6 26 L3.2 25.1 Z"
+        fill="none"
+        stroke={INDICATOR_INK}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M19.6 10.6 A6.2 6.2 0 1 1 12.3 8.2"
+        fill="none"
+        stroke={INDICATOR_INK}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path d="M12.3 8.2 L9.5 8.8 L11.4 11.4 Z" fill={INDICATOR_INK} stroke="none" />
+    </svg>
+  );
+}
+
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
   const [opening, setOpening] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showIndicator, setShowIndicator] = useState(false);
   const navigate = useNavigate();
 
-  // setTimeout reagendado a cada troca de face (manual ou automática) em vez de
-  // setInterval fixo: girar a caixa na mão sempre dá a volta inteira de novo,
-  // sem o giro automático emendar em cima logo depois.
-  useEffect(() => {
-    if (opening) return;
-    const id = window.setTimeout(() => {
-      setIndex((i) => (i + 1) % steps.length);
-    }, INTERVAL_MS);
-    return () => window.clearTimeout(id);
-  }, [index, opening, steps.length]);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const rotorRef = useRef<HTMLDivElement | null>(null);
+  const indicatorRef = useRef<HTMLDivElement | null>(null);
+  // Offset livre de arraste, em graus -- soma ao ângulo da face selecionada e
+  // fica ali depois de soltar (não volta pra face mais próxima sozinho).
+  const offsetRef = useRef(0);
+  const dragRef = useRef({ pointerId: -1, startX: 0, startOffset: 0 });
+
+  const currentAngle = () => index * -90 + offsetRef.current;
+
+  const applyRotorTransform = () => {
+    const el = rotorRef.current;
+    if (!el) return;
+    el.style.transform = `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
+      opening ? 1.16 : 1
+    })`;
+  };
 
   const handleTest = () => {
     if (opening) return;
@@ -55,15 +94,71 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     }, OPEN_DURATION_MS);
   };
 
+  const moveIndicator = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const indicator = indicatorRef.current;
+    const stage = stageRef.current;
+    if (!indicator || !stage) return;
+    const rect = stage.getBoundingClientRect();
+    indicator.style.transform = `translate3d(${event.clientX - rect.left}px, ${
+      event.clientY - rect.top
+    }px, 0)`;
+  };
+
+  const onPointerEnter = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse" || opening) return;
+    moveIndicator(event);
+    setShowIndicator(true);
+  };
+
+  const onPointerLeave = () => {
+    setShowIndicator(false);
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && !opening) moveIndicator(event);
+
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    const dx = event.clientX - dragRef.current.startX;
+    offsetRef.current = dragRef.current.startOffset + dx * DRAG_SENSITIVITY;
+    applyRotorTransform();
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (opening || (event.pointerType === "mouse" && event.button !== 0)) return;
+    stageRef.current?.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startOffset: offsetRef.current,
+    };
+    if (rotorRef.current) rotorRef.current.style.transition = "none";
+    setIsDragging(true);
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    dragRef.current.pointerId = -1;
+    if (rotorRef.current) rotorRef.current.style.transition = "";
+    setIsDragging(false);
+  };
+
   return (
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
-        className="relative mx-auto max-w-full"
+        ref={stageRef}
+        className={`relative mx-auto max-w-full touch-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
         style={{
           perspective: 1400,
           width: "var(--cube-size)",
           height: "calc(var(--cube-size) + 40px)",
+          userSelect: isDragging ? "none" : undefined,
         }}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+        onPointerMove={onPointerMove}
+        onPointerDown={onPointerDown}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
@@ -75,11 +170,36 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         />
 
         <div
+          ref={indicatorRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 z-20"
+          style={{ opacity: showIndicator ? 1 : 0, transition: "opacity 200ms ease" }}
+        >
+          <div
+            className="flex -translate-x-1/2 flex-col items-center transition-transform duration-200"
+            style={{
+              transform: `translateY(calc(-100% - 10px)) scale(${isDragging ? 0.85 : 1})`,
+            }}
+          >
+            {!isDragging ? (
+              <span
+                className="mb-1 font-sans text-[11px] font-medium"
+                style={{ color: INDICATOR_INK }}
+              >
+                Gire
+              </span>
+            ) : null}
+            <SpinIndicatorIcon />
+          </div>
+        </div>
+
+        <div
+          ref={rotorRef}
           className="relative transition-all duration-700 ease-in-out"
           style={{
             ...faceSize,
             transformStyle: "preserve-3d",
-            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
+            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
               opening ? 1.16 : 1
             })`,
             opacity: opening ? 0.4 : 1,
@@ -192,7 +312,10 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             key={step.label}
             type="button"
             aria-label={`Ver passo ${step.label}`}
-            onClick={() => setIndex(i)}
+            onClick={() => {
+              offsetRef.current = 0;
+              setIndex(i);
+            }}
             disabled={opening}
             className="h-1.5 w-6 rounded-full transition-colors"
             style={{ backgroundColor: i === index ? CARDBOARD : undefined }}
