@@ -48,6 +48,10 @@ export type Movement = {
   created_by: string | null;
   /** Resolvido pelo painel do onisciente, que alcança auth.users. */
   created_by_email?: string | null;
+  /** Quem recebe o crédito da venda — o dono pode lançar em nome de um comissionado. */
+  sold_by: string | null;
+  /** Resolvido pelo painel do onisciente, que alcança auth.users. */
+  sold_by_email?: string | null;
   /** Preenchido na linha do estorno: o lançamento que ele desfaz. */
   reverses_id: string | null;
   /** Preenchido na linha do original assim que alguém a estorna. */

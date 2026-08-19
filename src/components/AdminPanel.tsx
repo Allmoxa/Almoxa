@@ -527,7 +527,15 @@ export function AdminPanel({
                                                     {sourceLabel[movement.source]}
                                                   </td>
                                                   <td className="px-2 py-3 text-xs text-muted-foreground">
-                                                    {movement.created_by_email ?? "—"}
+                                                    {movement.sold_by_email ?? "—"}
+                                                    {movement.sold_by &&
+                                                    movement.created_by &&
+                                                    movement.sold_by !== movement.created_by ? (
+                                                      <span className="block">
+                                                        registrado por{" "}
+                                                        {movement.created_by_email ?? "—"}
+                                                      </span>
+                                                    ) : null}
                                                   </td>
                                                   <td className="px-2 py-3 text-right tabular-nums">
                                                     {qty(movement.quantity)}
