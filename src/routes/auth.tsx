@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { LoginStickers } from "@/components/login-stickers";
 import { LogoBracket } from "@/components/logo-bracket";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -75,14 +76,16 @@ function AuthPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <div className="mx-auto flex w-full max-w-5xl items-center px-6 py-6">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-background">
+      <LoginStickers />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl items-center px-6 py-6">
         <Link to="/" className="font-logo text-2xl font-semibold">
           <LogoBracket>Almoxá</LogoBracket>
         </Link>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 pb-20">
+      <div className="relative z-10 flex flex-1 items-center justify-center px-6 pb-20">
         <div className="w-full max-w-sm">
           <p className="label-caps">Acesso</p>
           <h1 className="mt-3 text-4xl">Entre no seu estoque</h1>

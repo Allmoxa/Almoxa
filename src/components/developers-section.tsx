@@ -1,5 +1,7 @@
-import { motion, type Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { Github, Instagram, Linkedin } from "lucide-react";
+import { forwardRef } from "react";
+import { useTeamParallax } from "@/hooks/use-team-parallax";
 
 type SocialLink = {
   label: string;
@@ -39,101 +41,109 @@ const developers: Developer[] = [
   },
 ];
 
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 32 },
-  show: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: i * 0.12 },
-  }),
-};
-
 /**
  * Tira de fita de embalagem. Puramente decorativa — className controla
- * tamanho, posição e rotação de cada uso.
+ * tamanho, posição e rotação de cada uso. forwardRef porque o parallax de
+ * "Quem fez" precisa de um handle direto pra cada fita.
  */
-function TapeStrip({ className }: { className: string }) {
+const TapeStrip = forwardRef<HTMLSpanElement, { className: string }>(function TapeStrip(
+  { className },
+  ref,
+) {
   return (
     <span
+      ref={ref}
       aria-hidden="true"
       className={`pointer-events-none absolute bg-[#EFE3CB]/90 shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${className}`}
     />
   );
-}
+});
 
 export function DevelopersSection() {
+  const {
+    sectionRef,
+    titleGroupRef,
+    card1Ref,
+    card2Ref,
+    card1TapeRef,
+    card2TapeRef,
+    setCornerTapeRef,
+  } = useTeamParallax();
+
   return (
     <section
+      ref={sectionRef}
       id="quem-fez"
       className="theme-box relative left-1/2 right-1/2 -mx-[50vw] w-screen rounded-[2.5rem] bg-background"
     >
-      <TapeStrip className="-top-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
-      <TapeStrip className="-top-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
-      <TapeStrip className="-bottom-6 left-10 h-14 w-28 -rotate-45 sm:left-20" />
-      <TapeStrip className="-bottom-6 right-10 h-14 w-28 rotate-45 sm:right-20" />
+      <TapeStrip
+        ref={setCornerTapeRef(0)}
+        className="-top-6 left-10 h-14 w-28 -rotate-45 sm:left-20"
+      />
+      <TapeStrip
+        ref={setCornerTapeRef(1)}
+        className="-top-6 right-10 h-14 w-28 rotate-45 sm:right-20"
+      />
+      <TapeStrip
+        ref={setCornerTapeRef(2)}
+        className="-bottom-6 left-10 h-14 w-28 -rotate-45 sm:left-20"
+      />
+      <TapeStrip
+        ref={setCornerTapeRef(3)}
+        className="-bottom-6 right-10 h-14 w-28 rotate-45 sm:right-20"
+      />
 
       <div className="mx-auto max-w-5xl px-6 py-24">
-        <motion.p
-          className="label-caps"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 0.5 }}
-        >
-          Quem fez
-        </motion.p>
-        <motion.h2
-          className="mt-4 max-w-xl font-display text-4xl leading-[1.05] text-foreground sm:text-5xl"
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 0.5, delay: 0.05 }}
-        >
-          Feito por quem também vive de estoque e planilha.
-        </motion.h2>
+        <div ref={titleGroupRef} style={{ willChange: "transform" }}>
+          <p className="label-caps">Quem fez</p>
+          <h2 className="mt-4 max-w-xl font-display text-4xl leading-[1.05] text-foreground sm:text-5xl">
+            Feito por quem também vive de estoque e planilha.
+          </h2>
+        </div>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
           {developers.map((dev, i) => (
-            <motion.div
+            <div
               key={dev.name}
-              className="paper-panel relative flex items-center gap-5 p-6"
-              custom={i}
-              variants={cardVariants}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, amount: 0.4 }}
-              whileHover={{ y: -4 }}
+              ref={i === 0 ? card1Ref : card2Ref}
+              style={{ willChange: "transform" }}
             >
-              <TapeStrip
-                className={`-top-4 left-1/2 h-9 w-20 -translate-x-1/2 ${i % 2 === 0 ? "-rotate-2" : "rotate-2"}`}
-              />
-              <img
-                src={dev.photo}
-                alt={dev.name}
-                className="size-20 shrink-0 rounded-full border border-border object-cover"
-              />
-              <div>
-                <p className="font-display text-xl text-foreground">{dev.name}</p>
-                <p className="text-sm text-muted-foreground">{dev.role}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground/80">{dev.bio}</p>
-                <div className="mt-3 flex gap-3">
-                  {dev.links.map((link) => (
-                    <motion.a
-                      key={link.label}
-                      href={link.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`${dev.name} no ${link.label}`}
-                      className="text-muted-foreground transition-colors hover:text-foreground"
-                      whileHover={{ scale: 1.15 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <link.icon className="size-5" />
-                    </motion.a>
-                  ))}
+              <motion.div
+                className="paper-panel relative flex h-full items-center gap-5 p-6"
+                whileHover={{ y: -4 }}
+              >
+                <TapeStrip
+                  ref={i === 0 ? card1TapeRef : card2TapeRef}
+                  className={`-top-4 left-1/2 h-9 w-20 -translate-x-1/2 ${i % 2 === 0 ? "-rotate-2" : "rotate-2"}`}
+                />
+                <img
+                  src={dev.photo}
+                  alt={dev.name}
+                  className="size-20 shrink-0 rounded-full border border-border object-cover"
+                />
+                <div>
+                  <p className="font-display text-xl text-foreground">{dev.name}</p>
+                  <p className="text-sm text-muted-foreground">{dev.role}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground/80">{dev.bio}</p>
+                  <div className="mt-3 flex gap-3">
+                    {dev.links.map((link) => (
+                      <motion.a
+                        key={link.label}
+                        href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${dev.name} no ${link.label}`}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        whileHover={{ scale: 1.15 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <link.icon className="size-5" />
+                      </motion.a>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           ))}
         </div>
       </div>

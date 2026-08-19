@@ -8,8 +8,11 @@ import { DevelopersSection } from "@/components/developers-section";
 import { RevealSafetyNet } from "@/components/reveal-safety-net";
 import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
-import { LogoBracket } from "@/components/logo-bracket";
+import { LogoRefreshButton } from "@/components/logo-refresh-button";
+import { MagneticLink } from "@/components/magnetic-button";
 import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
+import { useHeroParallax } from "@/hooks/use-hero-parallax";
+import { useFooterLineReveal } from "@/hooks/use-footer-line-reveal";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,6 +54,12 @@ const steps = [
 
 function Landing() {
   const navigate = useNavigate();
+  const {
+    sectionRef: heroSectionRef,
+    textGroupRef: heroTextGroupRef,
+    boxRef: heroBoxRef,
+  } = useHeroParallax();
+  const { footerRef, lineRef: footerLineRef } = useFooterLineReveal();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -59,14 +68,14 @@ function Landing() {
   }, [navigate]);
 
   return (
-    <div id="inicio" className="paper-texture-bg min-h-screen overflow-x-hidden bg-background">
+    <div id="inicio" className="paper-texture-bg min-h-screen overflow-x-clip bg-background">
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <ScrollFade className="font-logo text-3xl font-semibold">
-          <LogoBracket>Almoxá</LogoBracket>
+          <LogoRefreshButton />
         </ScrollFade>
 
         <nav className="hidden items-center gap-5 text-base md:flex">
@@ -105,35 +114,28 @@ function Landing() {
 
       <main className="mx-auto max-w-5xl px-6">
         <section
+          ref={heroSectionRef}
           id="como-funciona"
           className="grid items-center gap-12 border-b border-border py-24 lg:grid-cols-[1fr_auto]"
         >
-          <div>
-            <p className="label-caps" data-aos="fade-up">
-              Controle de entrada e saída
-            </p>
+          <div ref={heroTextGroupRef} style={{ willChange: "transform" }}>
+            <p className="label-caps">Controle de entrada e saída</p>
             <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
               Seu estoque atualizado com uma foto.
             </h1>
-            <p
-              className="mt-6 max-w-xl text-base text-muted-foreground"
-              data-aos="fade-up"
-              data-aos-delay="100"
-            >
+            <p className="mt-6 max-w-xl text-base text-muted-foreground">
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <Link
+            <MagneticLink
               to="/auth"
               className="mt-10 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              data-aos="fade-up"
-              data-aos-delay="200"
             >
               Entrar na conta
-            </Link>
+            </MagneticLink>
           </div>
 
-          <div data-aos="fade-left" data-aos-delay="150">
+          <div ref={heroBoxRef} style={{ willChange: "transform" }}>
             <StepsCube steps={steps} />
           </div>
         </section>
@@ -142,7 +144,17 @@ function Landing() {
 
         <ContactForm />
 
-        <footer className="rule-top py-10 text-sm text-muted-foreground" data-aos="fade-up">
+        <footer
+          ref={footerRef}
+          className="relative py-10 text-sm text-muted-foreground"
+          data-aos="fade-up"
+        >
+          <span
+            ref={footerLineRef}
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-border"
+            style={{ transformOrigin: "center", willChange: "transform" }}
+          />
           Almoxá — controle de estoque simples para quem compra e revende.
         </footer>
       </main>
