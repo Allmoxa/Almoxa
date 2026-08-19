@@ -6,9 +6,9 @@ import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
 import { PaginationNav } from "@/components/ui/pagination-nav";
 import { useEnterStore } from "@/hooks/use-store-context";
-import { roleLabel, type AppRole } from "@/hooks/use-user-role";
+import { roleLabel, useUserRole, type AppRole } from "@/hooks/use-user-role";
 import { requireOnisciente } from "@/lib/guards";
-import { createUser, getUserDetail, listUsers } from "@/lib/admin.functions";
+import { createUser, deleteUser, getUserDetail, listUsers } from "@/lib/admin.functions";
 import { currency, dateTime, qty, type Movement } from "@/lib/inventory";
 
 const PAGE_SIZE = 15;
@@ -57,6 +57,7 @@ const sourceLabel: Record<Movement["source"], string> = {
 
 function AdminPage() {
   const queryClient = useQueryClient();
+  const { userId: currentUserId } = useUserRole();
   const { enter } = useEnterStore();
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -121,6 +122,17 @@ function AdminPage() {
     },
     onError: (error) =>
       toast.error(error instanceof Error ? error.message : "Erro ao criar usuário"),
+  });
+
+  const removeUser = useMutation({
+    mutationFn: (userId: string) => deleteUser({ data: { userId } }),
+    onSuccess: (_, userId) => {
+      toast.success("Usuário apagado");
+      if (selected === userId) setSelected(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Erro ao apagar usuário"),
   });
 
   // Só quem tem estoque próprio pode receber comissionado.
@@ -342,6 +354,22 @@ function AdminPage() {
                           className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
                         >
                           Adentrar
+                        </button>
+                      )}
+                      {user.id === currentUserId ? null : (
+                        <button
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Apagar a conta de ${user.email}? Essa ação não pode ser desfeita.`,
+                              )
+                            )
+                              removeUser.mutate(user.id);
+                          }}
+                          disabled={removeUser.isPending}
+                          className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                        >
+                          Apagar
                         </button>
                       )}
                     </div>
