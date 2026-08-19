@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { RotateCw } from "lucide-react";
 import { useEffect, useState, type CSSProperties } from "react";
 
 type Step = {
@@ -48,8 +47,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     return () => window.clearTimeout(id);
   }, [index, opening, steps.length]);
 
-  const spin = () => setIndex((i) => (i + 1) % steps.length);
-
   const handleTest = () => {
     if (opening) return;
     setOpening(true);
@@ -77,17 +74,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           }}
         />
 
-        <button
-          type="button"
-          onClick={spin}
-          disabled={opening}
-          aria-label="Girar a caixa"
-          title="Girar"
-          className="absolute -right-3 -top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border-2 shadow-md transition-all duration-300 hover:-rotate-90 active:scale-90 disabled:pointer-events-none disabled:opacity-0"
-          style={{ borderColor: INK, color: INK, backgroundColor: TAPE }}
-        >
-          <RotateCw className="h-4 w-4" strokeWidth={2.5} />
-        </button>
         <div
           className="relative transition-all duration-700 ease-in-out"
           style={{
