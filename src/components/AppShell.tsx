@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { Check, Menu, Moon, Settings, Sun } from "lucide-react";
+import { Check, ChevronDown, Menu, Moon, Settings, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import {
   DropdownMenu,
@@ -12,7 +12,7 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useStoreContext, useEnterStore } from "@/hooks/use-store-context";
 import { useTheme } from "@/hooks/use-theme";
-import { useUserRole, roleLabel } from "@/hooks/use-user-role";
+import { useUserRole, roleLabel, type AppRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoBracket } from "@/components/logo-bracket";
 
@@ -35,7 +35,43 @@ const comissionadoNav = [
   { to: "/vender", label: "Vender" },
 ] as const;
 
-const oniscienteNav = { to: "/admin", label: "Onisciente" } as const;
+/** O papel de onisciente ganha um dropdown no cabeçalho com as funções extras dele. */
+function RoleBadge({
+  role,
+  isOnisciente,
+  className = "",
+}: {
+  role: AppRole | undefined;
+  isOnisciente: boolean;
+  className?: string;
+}) {
+  if (!role) return null;
+
+  const pillClass = `label-caps flex w-fit items-center gap-1 rounded-full px-2.5 py-1 ${
+    isOnisciente ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+  } ${className}`;
+
+  if (!isOnisciente) {
+    return <span className={pillClass}>{roleLabel[role]}</span>;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className={`${pillClass} transition-opacity hover:opacity-90`}>
+          {roleLabel[role]}
+          <ChevronDown className="size-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuLabel>Funções de onisciente</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link to="/admin">Painel administrativo</Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function AppShell({
   title,
@@ -55,11 +91,7 @@ export function AppShell({
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const items = isComissionado
-    ? [...comissionadoNav]
-    : isOnisciente
-      ? [...nav, oniscienteNav]
-      : [...nav];
+  const items = isComissionado ? [...comissionadoNav] : [...nav];
 
   const signOut = async () => {
     setMobileOpen(false);
@@ -88,17 +120,7 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto hidden items-center gap-4 md:flex">
-            {role ? (
-              <span
-                className={`label-caps rounded-full px-2.5 py-1 ${
-                  isOnisciente
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                {roleLabel[role]}
-              </span>
-            ) : null}
+            <RoleBadge role={role} isOnisciente={isOnisciente} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -148,17 +170,7 @@ export function AppShell({
                   <LogoBracket>Almoxá</LogoBracket>
                 </SheetTitle>
 
-                {role ? (
-                  <span
-                    className={`label-caps mt-3 w-fit rounded-full px-2.5 py-1 ${
-                      isOnisciente
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {roleLabel[role]}
-                  </span>
-                ) : null}
+                <RoleBadge role={role} isOnisciente={isOnisciente} className="mt-3" />
 
                 <nav className="mt-6 flex flex-col gap-1">
                   {items.map((item) => (
