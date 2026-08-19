@@ -21,6 +21,8 @@ const HALF = "calc(var(--cube-size) / 2)";
 const TILT = -14;
 const OPEN_TILT = -66;
 const OPEN_DURATION_MS = 750;
+// Graus por pixel arrastado -- ~90deg (uma face) a cada ~257px de arraste.
+const DRAG_SENSITIVITY = 0.35;
 
 const CARDBOARD = "#C19A6C";
 const CARDBOARD_LIGHT = "#D8B78C";
@@ -29,7 +31,6 @@ const CARDBOARD_DARKER = "#8F6E4A";
 const INK = "#3B2A18";
 const INK_SOFT = "#6B4E30";
 const TAPE = "#EFE3CB";
-const INDICATOR_INK = "#3B2A1E";
 
 const corrugation: CSSProperties = {
   backgroundImage: `repeating-linear-gradient(90deg, rgba(59,42,24,0.09) 0px, rgba(59,42,24,0.09) 2px, transparent 2px, transparent 7px)`,
@@ -37,37 +38,53 @@ const corrugation: CSSProperties = {
 
 const faceSize: CSSProperties = { width: "var(--cube-size)", height: "var(--cube-size)" };
 
-/** Quadrado torto com uma seta circular dentro -- mesmo espírito artesanal dos cantos da navbar. */
-function SpinIndicatorIcon() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-      <path
-        d="M4 5.2 L25 3.4 L26.6 26 L3.2 25.1 Z"
-        fill="none"
-        stroke={INDICATOR_INK}
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M19.6 10.6 A6.2 6.2 0 1 1 12.3 8.2"
-        fill="none"
-        stroke={INDICATOR_INK}
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path d="M12.3 8.2 L9.5 8.8 L11.4 11.4 Z" fill={INDICATOR_INK} stroke="none" />
-    </svg>
-  );
-}
+// --- Botão circular de rotação ---
+const BUTTON_SIZE = 46;
+const BUTTON_GAP = 18;
+const BUTTON_MARGIN = 8;
+const FOLLOW_EASE = 0.14;
+const PRESS_SPIN_MS = 380;
+const BUTTON_BG = "#11110F";
+const ARROW_COLOR = "#F5EBDD";
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
   const [opening, setOpening] = useState(false);
-  const [showIndicator, setShowIndicator] = useState(false);
+  const [buttonVisible, setButtonVisible] = useState(false);
+  const [pressed, setPressed] = useState(false);
   const navigate = useNavigate();
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const indicatorRef = useRef<HTMLDivElement | null>(null);
+  const rotorRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLDivElement | null>(null);
+  const arrowRef = useRef<SVGSVGElement | null>(null);
+
+  // Rotação livre acumulada pelo arraste, em graus -- soma ao ângulo da face
+  // selecionada e fica ali depois de soltar (sem voltar pra face mais próxima).
+  const offsetRef = useRef(0);
+  const dragRef = useRef({ pointerId: -1, startX: 0, startOffset: 0 });
+
+  // Estado do botão-seguidor: um rAF só, cuidando de posição (lerp) e do giro
+  // da seta (spin de entrada + acompanha o offset do arraste).
+  const followRef = useRef({
+    frame: null as number | null,
+    targetX: 0,
+    targetY: 0,
+    currentX: 0,
+    currentY: 0,
+    pressStart: 0,
+    reduceMotion: false,
+  });
+
+  const currentAngle = () => index * -90 + offsetRef.current;
+
+  const applyRotorTransform = () => {
+    const el = rotorRef.current;
+    if (!el) return;
+    el.style.transform = `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
+      opening ? 1.16 : 1
+    })`;
+  };
 
   const handleTest = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -78,52 +95,156 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     }, OPEN_DURATION_MS);
   };
 
-  const moveIndicator = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const indicator = indicatorRef.current;
+  const clampButtonPosition = (
+    cursorX: number,
+    cursorY: number,
+    stageW: number,
+    stageH: number,
+  ) => {
+    let x = cursorX + BUTTON_GAP;
+    let y = cursorY + BUTTON_GAP;
+    if (x + BUTTON_SIZE + BUTTON_MARGIN > stageW) x = cursorX - BUTTON_GAP - BUTTON_SIZE;
+    if (y + BUTTON_SIZE + BUTTON_MARGIN > stageH) y = cursorY - BUTTON_GAP - BUTTON_SIZE;
+    const maxX = Math.max(BUTTON_MARGIN, stageW - BUTTON_SIZE - BUTTON_MARGIN);
+    const maxY = Math.max(BUTTON_MARGIN, stageH - BUTTON_SIZE - BUTTON_MARGIN);
+    return {
+      x: Math.min(Math.max(x, BUTTON_MARGIN), maxX),
+      y: Math.min(Math.max(y, BUTTON_MARGIN), maxY),
+    };
+  };
+
+  const tick = () => {
+    const state = followRef.current;
+    const button = buttonRef.current;
+    if (!button) return;
+
+    if (state.reduceMotion) {
+      state.currentX = state.targetX;
+      state.currentY = state.targetY;
+    } else {
+      state.currentX += (state.targetX - state.currentX) * FOLLOW_EASE;
+      state.currentY += (state.targetY - state.currentY) * FOLLOW_EASE;
+    }
+    button.style.transform = `translate3d(${state.currentX}px, ${state.currentY}px, 0)`;
+
+    let spin = 0;
+    if (!state.reduceMotion && state.pressStart > 0) {
+      const elapsed = performance.now() - state.pressStart;
+      if (elapsed < PRESS_SPIN_MS) {
+        const t = elapsed / PRESS_SPIN_MS;
+        spin = (1 - Math.pow(1 - t, 3)) * 360;
+      } else {
+        state.pressStart = 0;
+      }
+    }
+    if (arrowRef.current) {
+      arrowRef.current.style.transform = `rotate(${spin + offsetRef.current}deg)`;
+    }
+
+    const settled =
+      !state.reduceMotion &&
+      state.pressStart === 0 &&
+      Math.abs(state.targetX - state.currentX) < 0.05 &&
+      Math.abs(state.targetY - state.currentY) < 0.05;
+
+    if (settled || state.reduceMotion) {
+      state.frame = null;
+      button.style.willChange = "auto";
+      return;
+    }
+
+    state.frame = requestAnimationFrame(tick);
+  };
+
+  const startFollowLoop = () => {
+    const state = followRef.current;
+    if (state.frame == null) {
+      if (buttonRef.current) buttonRef.current.style.willChange = "transform";
+      state.frame = requestAnimationFrame(tick);
+    }
+  };
+
+  const setFollowTarget = (event: ReactPointerEvent<HTMLDivElement>, snap: boolean) => {
     const stage = stageRef.current;
-    if (!indicator || !stage) return;
+    if (!stage) return;
     const rect = stage.getBoundingClientRect();
-    indicator.style.transform = `translate3d(${event.clientX - rect.left}px, ${
-      event.clientY - rect.top
-    }px, 0)`;
+    const cursorX = event.clientX - rect.left;
+    const cursorY = event.clientY - rect.top;
+    const { x, y } = clampButtonPosition(cursorX, cursorY, rect.width, rect.height);
+    const state = followRef.current;
+    state.targetX = x;
+    state.targetY = y;
+    if (snap) {
+      state.currentX = x;
+      state.currentY = y;
+      if (buttonRef.current) buttonRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    }
   };
 
   const onPointerEnter = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "mouse" || opening) return;
-    moveIndicator(event);
-    setShowIndicator(true);
+    followRef.current.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setFollowTarget(event, true);
+    setButtonVisible(true);
+    startFollowLoop();
   };
 
   const onPointerLeave = () => {
-    setShowIndicator(false);
+    setButtonVisible(false);
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" && !opening) moveIndicator(event);
+    if (event.pointerType === "mouse" && !opening) {
+      setFollowTarget(event, false);
+      startFollowLoop();
+    }
+
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    const dx = event.clientX - dragRef.current.startX;
+    offsetRef.current = dragRef.current.startOffset + dx * DRAG_SENSITIVITY;
+    applyRotorTransform();
   };
 
-  // Um clique em qualquer ponto da caixa gira pra próxima face -- sem
-  // arrastar, sem segurar. O botão "Testar" tem seu próprio handler acima e
-  // já para a propagação antes de chegar aqui.
-  const spin = () => {
-    if (opening) return;
-    setIndex((i) => (i + 1) % steps.length);
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (opening || (event.pointerType === "mouse" && event.button !== 0)) return;
+    stageRef.current?.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startOffset: offsetRef.current,
+    };
+    if (rotorRef.current) rotorRef.current.style.transition = "none";
+    setPressed(true);
+    if (!followRef.current.reduceMotion) {
+      followRef.current.pressStart = performance.now();
+      startFollowLoop();
+    }
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    dragRef.current.pointerId = -1;
+    if (rotorRef.current) rotorRef.current.style.transition = "";
+    setPressed(false);
   };
 
   return (
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         ref={stageRef}
-        className="relative mx-auto max-w-full cursor-pointer"
+        className={`relative mx-auto max-w-full touch-none ${pressed ? "cursor-grabbing" : "cursor-grab"}`}
         style={{
           perspective: 1400,
           width: "var(--cube-size)",
           height: "calc(var(--cube-size) + 40px)",
+          userSelect: pressed ? "none" : undefined,
         }}
-        onClick={spin}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         onPointerMove={onPointerMove}
+        onPointerDown={onPointerDown}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
@@ -135,31 +256,55 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         />
 
         <div
-          ref={indicatorRef}
+          ref={buttonRef}
           aria-hidden="true"
           className="pointer-events-none absolute top-0 left-0 z-20"
-          style={{ opacity: showIndicator ? 1 : 0, transition: "opacity 200ms ease" }}
+          style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
         >
           <div
-            className="flex -translate-x-1/2 flex-col items-center"
-            style={{ transform: "translateY(calc(-100% - 10px))" }}
+            className="h-full w-full transition-[opacity,transform] duration-300 ease-out"
+            style={{
+              opacity: buttonVisible ? 1 : 0,
+              transform: `scale(${buttonVisible ? 1 : 0.85})`,
+            }}
           >
-            <span
-              className="mb-1 font-sans text-[11px] font-medium"
-              style={{ color: INDICATOR_INK }}
+            <div
+              className="h-full w-full transition-transform duration-150 ease-out"
+              style={{ transform: `scale(${pressed ? 0.9 : 1})` }}
             >
-              Gire
-            </span>
-            <SpinIndicatorIcon />
+              <div
+                className="flex h-full w-full items-center justify-center rounded-full shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)]"
+                style={{ backgroundColor: BUTTON_BG }}
+              >
+                <svg
+                  ref={arrowRef}
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  aria-hidden="true"
+                  style={{ transformOrigin: "50% 50%" }}
+                >
+                  <path
+                    d="M14.3 5.6 A6 6 0 1 1 9.2 3"
+                    fill="none"
+                    stroke={ARROW_COLOR}
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                  <path d="M14.3 5.6 L15.1 2.2 L11.6 3.5 Z" fill={ARROW_COLOR} />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
         <div
+          ref={rotorRef}
           className="relative transition-all duration-700 ease-in-out"
           style={{
             ...faceSize,
             transformStyle: "preserve-3d",
-            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
+            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
               opening ? 1.16 : 1
             })`,
             opacity: opening ? 0.4 : 1,
@@ -198,6 +343,7 @@ export function StepsCube({ steps }: { steps: Step[] }) {
               {i === steps.length - 1 ? (
                 <button
                   type="button"
+                  onPointerDown={(event) => event.stopPropagation()}
                   onClick={handleTest}
                   className="relative mt-2 inline-flex w-fit items-center gap-2 rounded-sm border-2 px-5 py-2.5 font-mono text-xs font-semibold uppercase tracking-widest transition-transform hover:-translate-y-0.5 active:translate-y-0"
                   style={{ borderColor: INK, color: INK, backgroundColor: TAPE }}
@@ -272,8 +418,8 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             key={step.label}
             type="button"
             aria-label={`Ver passo ${step.label}`}
-            onClick={(event) => {
-              event.stopPropagation();
+            onClick={() => {
+              offsetRef.current = 0;
               setIndex(i);
             }}
             disabled={opening}
