@@ -182,6 +182,34 @@
 }
 
 /*
+ * Contorno desenhado dos itens da navbar da home (MagneticNavItem).
+ * --outline-length vem do getTotalLength() de cada <path>, plantado via JS
+ * no mount; o fallback de 140 aqui é só rede de segurança pro instante antes
+ * disso rodar (a área do item já esconde bem, mas evita um traço sólido
+ * piscando caso o JS demore).
+ */
+@utility magnetic-outline-path {
+  fill: none;
+  stroke: #1f1a16;
+  stroke-width: 1.7px;
+  stroke-linecap: round;
+  stroke-dasharray: var(--outline-length, 140);
+  stroke-dashoffset: var(--outline-length, 140);
+  transition: stroke-dashoffset 380ms ease;
+}
+
+.magnetic-nav-link[data-drawn="true"] .magnetic-outline-path,
+.magnetic-nav-link:focus-visible .magnetic-outline-path {
+  stroke-dashoffset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magnetic-outline-path {
+    transition-duration: 1ms;
+  }
+}
+
+/*
  * Canto artesanal da aba ativa da navbar (NavTabLabel). --corner-length vem
  * do getTotalLength() de cada <path>, plantado via JS logo no mount; o
  * fallback de 24 aqui é só rede de segurança pro instante antes disso rodar.

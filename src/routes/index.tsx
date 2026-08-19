@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepsCube } from "@/components/steps-cube";
@@ -10,7 +10,8 @@ import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { MagneticLink } from "@/components/magnetic-button";
-import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
+import { MagneticNavItem } from "@/components/magnetic-nav-item";
+import { SketchDivider } from "@/components/sketch";
 import { useHeroParallax } from "@/hooks/use-hero-parallax";
 import { useFooterLineReveal } from "@/hooks/use-footer-line-reveal";
 
@@ -79,35 +80,32 @@ function Landing() {
         </ScrollFade>
 
         <nav className="hidden items-center gap-5 text-base md:flex">
-          <a href="#inicio" className="font-medium text-foreground">
-            <SketchCircle>Início</SketchCircle>
-          </a>
+          <MagneticNavItem href="#inicio" shape="circle" alwaysDrawn labelClassName="font-medium">
+            Início
+          </MagneticNavItem>
           <span className="text-border-strong" aria-hidden="true">
             |
           </span>
-          <a href="#como-funciona" className="text-foreground transition-opacity hover:opacity-70">
-            <SketchUnderline>Como funciona</SketchUnderline>
-          </a>
+          <MagneticNavItem href="#como-funciona" shape="underline">
+            Como funciona
+          </MagneticNavItem>
           <span className="text-border-strong" aria-hidden="true">
             |
           </span>
-          <a href="#quem-fez" className="text-foreground transition-opacity hover:opacity-70">
-            <SketchUnderline>Quem fez</SketchUnderline>
-          </a>
+          <MagneticNavItem href="#quem-fez" shape="underline">
+            Quem fez
+          </MagneticNavItem>
           <span className="text-border-strong" aria-hidden="true">
             |
           </span>
-          <a href="#contato" className="text-foreground transition-opacity hover:opacity-70">
-            <SketchUnderline>Contato</SketchUnderline>
-          </a>
+          <MagneticNavItem href="#contato" shape="underline">
+            Contato
+          </MagneticNavItem>
         </nav>
 
-        <Link
-          to="/auth"
-          className="text-lg font-semibold text-foreground transition-opacity hover:opacity-70"
-        >
+        <MagneticNavItem to="/auth" shape="brackets" labelClassName="text-lg font-semibold">
           Entrar
-        </Link>
+        </MagneticNavItem>
       </header>
 
       <SketchDivider />

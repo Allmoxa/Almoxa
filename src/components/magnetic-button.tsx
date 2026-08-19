@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { springStep, type Vec2 } from "@/lib/spring";
 
 type MagneticLinkProps = Omit<ComponentPropsWithoutRef<typeof Link>, "children"> & {
   children?: ReactNode;
@@ -8,16 +9,7 @@ type MagneticLinkProps = Omit<ComponentPropsWithoutRef<typeof Link>, "children">
 const BUTTON_STRENGTH = 0.22;
 const TEXT_STRENGTH = 0.12;
 const MAX_OFFSET_PX = 16;
-const SPRING_STIFFNESS = 0.15;
-const SPRING_DAMPING = 0.75;
 const SETTLE_EPSILON = 0.03;
-
-type Vec2 = { x: number; y: number };
-
-function springStep(position: number, velocity: number, target: number) {
-  const nextVelocity = (velocity + (target - position) * SPRING_STIFFNESS) * SPRING_DAMPING;
-  return { position: position + nextVelocity, velocity: nextVelocity };
-}
 
 /**
  * Botão magnético: segue o cursor com o próprio elemento (20-25% da
@@ -96,8 +88,14 @@ export function MagneticLink({ children, ...props }: MagneticLinkProps) {
 
     const onMouseMove = (event: MouseEvent) => {
       const rect = button.getBoundingClientRect();
-      target.x = clamp((event.clientX - (rect.left + rect.width / 2)) * BUTTON_STRENGTH, MAX_OFFSET_PX);
-      target.y = clamp((event.clientY - (rect.top + rect.height / 2)) * BUTTON_STRENGTH, MAX_OFFSET_PX);
+      target.x = clamp(
+        (event.clientX - (rect.left + rect.width / 2)) * BUTTON_STRENGTH,
+        MAX_OFFSET_PX,
+      );
+      target.y = clamp(
+        (event.clientY - (rect.top + rect.height / 2)) * BUTTON_STRENGTH,
+        MAX_OFFSET_PX,
+      );
       hovering = true;
       startLoop();
     };
