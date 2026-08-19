@@ -1,6 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { Check, ChevronDown, Menu, Moon, Settings, Sun } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Check, Menu, Moon, ShieldCheck, Settings, Sun } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { AdminPanel } from "@/components/AdminPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +13,7 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useStoreContext, useEnterStore } from "@/hooks/use-store-context";
 import { useTheme } from "@/hooks/use-theme";
-import { useUserRole, roleLabel, type AppRole } from "@/hooks/use-user-role";
+import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoBracket } from "@/components/logo-bracket";
 
@@ -35,44 +36,6 @@ const comissionadoNav = [
   { to: "/vender", label: "Vender" },
 ] as const;
 
-/** O papel de onisciente ganha um dropdown no cabeçalho com as funções extras dele. */
-function RoleBadge({
-  role,
-  isOnisciente,
-  className = "",
-}: {
-  role: AppRole | undefined;
-  isOnisciente: boolean;
-  className?: string;
-}) {
-  if (!role) return null;
-
-  const pillClass = `label-caps flex w-fit items-center gap-1 rounded-full px-2.5 py-1 ${
-    isOnisciente ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
-  } ${className}`;
-
-  if (!isOnisciente) {
-    return <span className={pillClass}>{roleLabel[role]}</span>;
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className={`${pillClass} transition-opacity hover:opacity-90`}>
-          {roleLabel[role]}
-          <ChevronDown className="size-3" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-48">
-        <DropdownMenuLabel>Funções de onisciente</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link to="/admin">Painel administrativo</Link>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export function AppShell({
   title,
   description,
@@ -85,13 +48,23 @@ export function AppShell({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { role, isOnisciente, isComissionado } = useUserRole();
+  const { isOnisciente, isComissionado } = useUserRole();
   const { entered, storeEmail } = useStoreContext();
   const { leave } = useEnterStore();
   const { theme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [adminPanelReturnsTo, setAdminPanelReturnsTo] = useState<"gear" | "menu">("gear");
+  const gearButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   const items = isComissionado ? [...comissionadoNav] : [...nav];
+
+  const openAdminPanel = (from: "gear" | "menu") => {
+    setAdminPanelReturnsTo(from);
+    // Adiar o open evita a disputa de foco com o fechamento do próprio menu/sheet que disparou.
+    setTimeout(() => setAdminPanelOpen(true), 0);
+  };
 
   const signOut = async () => {
     setMobileOpen(false);
@@ -120,18 +93,32 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto hidden items-center gap-4 md:flex">
-            <RoleBadge role={role} isOnisciente={isOnisciente} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
+                  ref={gearButtonRef}
                   aria-label="Opções"
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className="relative flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors before:absolute before:-inset-1.5 before:content-[''] hover:bg-secondary hover:text-foreground"
                 >
                   <Settings className="size-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Tema</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56">
+                {isOnisciente ? (
+                  <>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        openAdminPanel("gear");
+                      }}
+                    >
+                      <ShieldCheck className="size-4" />
+                      Painel administrativo
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
+                <DropdownMenuLabel>Configurações da conta</DropdownMenuLabel>
                 <DropdownMenuItem onClick={() => setTheme("light")} className="justify-between">
                   <span className="flex items-center gap-2">
                     <Sun className="size-4" />
@@ -156,8 +143,9 @@ export function AppShell({
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
                 <button
+                  ref={mobileMenuButtonRef}
                   aria-label="Abrir menu"
-                  className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors before:absolute before:-inset-1 before:content-[''] hover:bg-muted hover:text-foreground"
                 >
                   <Menu className="size-5" />
                 </button>
@@ -170,9 +158,21 @@ export function AppShell({
                   <LogoBracket>Almoxá</LogoBracket>
                 </SheetTitle>
 
-                <RoleBadge role={role} isOnisciente={isOnisciente} className="mt-3" />
+                {isOnisciente ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      openAdminPanel("menu");
+                    }}
+                    className="mt-6 flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <ShieldCheck className="size-4" />
+                    Painel administrativo
+                  </button>
+                ) : null}
 
-                <nav className="mt-6 flex flex-col gap-1">
+                <nav className={`flex flex-col gap-1 ${isOnisciente ? "mt-1" : "mt-6"}`}>
                   {items.map((item) => (
                     <Link
                       key={item.to}
@@ -258,6 +258,14 @@ export function AppShell({
         </div>
         <div className="mt-10">{children}</div>
       </main>
+
+      {isOnisciente ? (
+        <AdminPanel
+          open={adminPanelOpen}
+          onOpenChange={setAdminPanelOpen}
+          returnFocusRef={adminPanelReturnsTo === "gear" ? gearButtonRef : mobileMenuButtonRef}
+        />
+      ) : null}
     </div>
   );
 }
