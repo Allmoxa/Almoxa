@@ -11,6 +11,7 @@ import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { MagneticLink } from "@/components/magnetic-button";
 import { MagneticNavItem } from "@/components/magnetic-nav-item";
+import { BoxHintSticker } from "@/components/box-hint-sticker";
 import { SketchDivider } from "@/components/sketch";
 import { useHeroParallax } from "@/hooks/use-hero-parallax";
 import { useFooterLineReveal } from "@/hooks/use-footer-line-reveal";
@@ -133,8 +134,9 @@ function Landing() {
             </MagneticLink>
           </div>
 
-          <div ref={heroBoxRef} style={{ willChange: "transform" }}>
+          <div ref={heroBoxRef} className="relative" style={{ willChange: "transform" }}>
             <StepsCube steps={steps} />
+            <BoxHintSticker />
           </div>
         </section>
 
