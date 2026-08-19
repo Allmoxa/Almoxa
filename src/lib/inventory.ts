@@ -12,6 +12,11 @@ export const dateTime = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+// Rótulo legível a partir do nome, para o produto que veio sem código na nota.
+// Não serve como identidade: dois nomes distintos podem gerar o mesmo slug, e
+// quem garante a unicidade na loja é freeSku() em lib/sku.ts. O corte era de 20
+// caracteres, curto o bastante para "Camiseta básica preta - tam. P" e a mesma
+// peça em tam. M colidirem já no primeiro cadastro.
 export const slugSku = (name: string) =>
   name
     .normalize("NFD")
@@ -19,7 +24,7 @@ export const slugSku = (name: string) =>
     .toUpperCase()
     .replace(/[^A-Z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 20) || "ITEM";
+    .slice(0, 40) || "ITEM";
 
 export type Product = {
   id: string;

@@ -9,7 +9,8 @@ import { BoxSpinner } from "@/components/ui/box-spinner";
 import { useStoreContext } from "@/hooks/use-store-context";
 import { supabase } from "@/integrations/supabase/client";
 import { extractProducts, type ExtractedItem } from "@/lib/intake.functions";
-import { currency, slugSku } from "@/lib/inventory";
+import { currency } from "@/lib/inventory";
+import { freeSku } from "@/lib/sku";
 
 export const Route = createFileRoute("/_authenticated/receber")({
   head: () => ({
@@ -80,8 +81,20 @@ function ReceberPage() {
       const storeId = storeOwnerId ?? userId;
 
       for (const row of rows) {
-        const sku = (row.sku || slugSku(row.name)).slice(0, 80);
-        const { data: existing } = await supabase.from("products").select("id").eq("sku", sku).maybeSingle();
+        const informed = row.sku.trim().slice(0, 80);
+
+        // Com código na nota, o código diz qual produto é: receber a mesma peça
+        // de novo atualiza o preço da que já está cadastrada. Sem código, quem
+        // identifica é o nome — casar pelo slug juntava "tam. P" e "tam. M" num
+        // produto só, porque os dois geram o mesmo rótulo.
+        //
+        // Nome exato, e não ilike: nome com capitalização diferente cadastra um
+        // produto a mais, que aparece na lista e o dono junta. O erro contrário
+        // — dois produtos virarem um — é o que se está consertando aqui, e esse
+        // some sem deixar rastro, levando junto o preço e a entrada da nota.
+        const { data: existing } = informed
+          ? await supabase.from("products").select("id").eq("sku", informed).limit(1).maybeSingle()
+          : await supabase.from("products").select("id").eq("name", row.name).limit(1).maybeSingle();
 
         let productId = existing?.id;
         if (productId) {
@@ -99,7 +112,7 @@ function ReceberPage() {
             .insert({
               user_id: storeId,
               name: row.name,
-              sku,
+              sku: informed || (await freeSku(row.name, storeId)),
               purchase_price: row.purchase_price,
               sale_price: row.sale_price,
               quantity: 0,

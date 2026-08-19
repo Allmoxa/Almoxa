@@ -19,11 +19,11 @@ import {
   profitByProduct,
   profitSummary,
   qty,
-  slugSku,
   NON_SALE_SOURCES_FILTER,
   type Product,
   type Sale,
 } from "@/lib/inventory";
+import { freeSku } from "@/lib/sku";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({
@@ -115,7 +115,7 @@ function EstoqueDono() {
         .insert({
           user_id: storeId,
           name: values.name,
-          sku: values.sku || slugSku(values.name),
+          sku: values.sku || (await freeSku(values.name, storeId)),
           purchase_price: values.purchase_price,
           sale_price: values.sale_price,
           quantity: 0,
