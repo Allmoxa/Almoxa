@@ -53,7 +53,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("movements")
         .select(
-          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, reverses_id, reversed_at, products(name, sku)",
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, sold_by, reverses_id, reversed_at, products(name, sku)",
         )
         .order("created_at", { ascending: false })
         .limit(300);
@@ -194,9 +194,14 @@ function MovimentacoesPage() {
                       {sourceLabel[movement.source]}
                     </td>
                     <td className="px-3 py-4 text-xs text-muted-foreground">
-                      {movement.created_by
-                        ? (emailById.get(movement.created_by) ?? "—")
-                        : "—"}
+                      {movement.sold_by ? (emailById.get(movement.sold_by) ?? "—") : "—"}
+                      {movement.sold_by &&
+                      movement.created_by &&
+                      movement.sold_by !== movement.created_by ? (
+                        <span className="block">
+                          registrado por {emailById.get(movement.created_by) ?? "—"}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-4 text-right tabular-nums">{qty(movement.quantity)}</td>
                     <td className="px-3 py-4 text-right tabular-nums">

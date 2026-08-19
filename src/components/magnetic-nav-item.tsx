@@ -189,7 +189,7 @@ export function MagneticNavItem({
   );
 
   const sharedProps = {
-    className: "magnetic-nav-link relative inline-block text-foreground",
+    className: "magnetic-nav-link relative inline-block text-foreground select-none",
     "data-drawn": drawn ? "true" : undefined,
     onMouseDown: () => setPressed(true),
     onMouseUp: () => setPressed(false),

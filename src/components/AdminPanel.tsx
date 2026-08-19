@@ -31,7 +31,7 @@ type SectionKey = (typeof ADMIN_SECTIONS)[number]["key"];
  */
 const SECTION_WIDTH: Record<SectionKey, number> = {
   overview: 960,
-  users: 1200,
+  users: 1320,
   invites: 940,
   roles: 1120,
   business: 820,
@@ -245,7 +245,7 @@ export function AdminPanel({
               >
                 <motion.div
                   layout
-                  className="admin-panel-window paper-panel flex h-full w-full flex-col overflow-hidden rounded-none sm:h-auto sm:max-h-[calc(100dvh-48px)] sm:min-w-[min(680px,calc(100vw-48px))] sm:max-w-[min(1280px,calc(100vw-48px))] sm:rounded-2xl"
+                  className="admin-panel-window paper-panel flex h-full w-full flex-col overflow-hidden rounded-none sm:h-auto sm:max-h-[calc(100dvh-48px)] sm:min-w-[min(680px,calc(100vw-48px))] sm:max-w-[min(1400px,calc(100vw-48px))] sm:rounded-2xl"
                   style={
                     {
                       boxShadow: "var(--shadow-lift)",
@@ -527,7 +527,15 @@ export function AdminPanel({
                                                     {sourceLabel[movement.source]}
                                                   </td>
                                                   <td className="px-2 py-3 text-xs text-muted-foreground">
-                                                    {movement.created_by_email ?? "—"}
+                                                    {movement.sold_by_email ?? "—"}
+                                                    {movement.sold_by &&
+                                                    movement.created_by &&
+                                                    movement.sold_by !== movement.created_by ? (
+                                                      <span className="block">
+                                                        registrado por{" "}
+                                                        {movement.created_by_email ?? "—"}
+                                                      </span>
+                                                    ) : null}
                                                   </td>
                                                   <td className="px-2 py-3 text-right tabular-nums">
                                                     {qty(movement.quantity)}
@@ -752,7 +760,7 @@ export function AdminPanel({
                                                 <p className="font-medium break-all">
                                                   {user.email}
                                                 </p>
-                                                <p className="text-xs whitespace-nowrap text-muted-foreground">
+                                                <p className="text-xs text-muted-foreground">
                                                   Desde {dateTime(user.created_at)}
                                                   {user.last_sign_in_at
                                                     ? ` · último acesso ${dateTime(user.last_sign_in_at)}`

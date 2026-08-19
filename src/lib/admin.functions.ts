@@ -233,7 +233,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("movements")
         .select(
-          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, reverses_id, reversed_at, products(name, sku)",
+          "id, product_id, kind, quantity, unit_price, unit_cost, source, note, created_at, created_by, sold_by, reverses_id, reversed_at, products(name, sku)",
         )
         .eq("user_id", data.userId)
         .order("created_at", { ascending: false })
@@ -252,6 +252,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
       movements: (movements.data as Movement[]).map((movement) => ({
         ...movement,
         created_by_email: movement.created_by ? (emailById.get(movement.created_by) ?? null) : null,
+        sold_by_email: movement.sold_by ? (emailById.get(movement.sold_by) ?? null) : null,
       })),
     };
   });

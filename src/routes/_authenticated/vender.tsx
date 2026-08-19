@@ -26,12 +26,14 @@ export const Route = createFileRoute("/_authenticated/vender")({
       { title: "Vender — Almoxá" },
       {
         name: "description",
-        content: "Registre a venda pela notinha ou monte o carrinho: o total informado se divide entre os produtos.",
+        content:
+          "Registre a venda pela notinha ou monte o carrinho: o total informado se divide entre os produtos.",
       },
       { property: "og:title", content: "Vender — Almoxá" },
       {
         property: "og:description",
-        content: "Registre a venda pela notinha ou monte o carrinho: o total informado se divide entre os produtos.",
+        content:
+          "Registre a venda pela notinha ou monte o carrinho: o total informado se divide entre os produtos.",
       },
     ],
   }),
@@ -84,7 +86,8 @@ const matchProduct = (products: Product[], item: ExtractedSaleItem) => {
   );
 };
 
-const sumOf = (lines: SaleLine[]) => lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
+const sumOf = (lines: SaleLine[]) =>
+  lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
 
 function VenderPage() {
   const queryClient = useQueryClient();
@@ -98,6 +101,21 @@ function VenderPage() {
   const role = useUserRole();
   const { storeOwnerId } = useStoreContext();
   const isComissionado = role.isComissionado;
+  const [sellerId, setSellerId] = useState<string | null>(null);
+
+  // O dono e a equipe dele -- quem pode ser creditado pela venda. Um
+  // comissionado logado só se vê a si mesmo aqui.
+  const { data: sellers = [] } = useQuery({
+    queryKey: ["store-members"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("store_members");
+      if (error) throw error;
+      return (data ?? []) as { id: string; email: string }[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const effectiveSellerId = sellerId ?? role.userId ?? null;
 
   const { data: products = [] } = useQuery({
     queryKey: ["products", isComissionado],
@@ -165,7 +183,11 @@ function VenderPage() {
       const payload = await Promise.all(
         files.slice(0, 4).map(async (file) => {
           if (file.size > 12 * 1024 * 1024) throw new Error(`${file.name} passa de 12 MB`);
-          return { name: file.name, mimeType: file.type || "application/octet-stream", dataUrl: await toDataUrl(file) };
+          return {
+            name: file.name,
+            mimeType: file.type || "application/octet-stream",
+            dataUrl: await toDataUrl(file),
+          };
         }),
       );
       return read({ data: { files: payload } });
@@ -221,14 +243,18 @@ function VenderPage() {
       for (const [productId, wanted] of demand) {
         const product = productById.get(productId);
         if (product && wanted > product.quantity) {
-          throw new Error(`Estoque insuficiente de ${product.name}: há ${qty(product.quantity)} un.`);
+          throw new Error(
+            `Estoque insuficiente de ${product.name}: há ${qty(product.quantity)} un.`,
+          );
         }
       }
 
       // O movimento pertence ao dono do estoque, não a quem lançou. Quem lançou
       // é carimbado pelo banco em created_by, e é assim que a venda do
       // comissionado — ou do onisciente que adentrou — sai do estoque certo com
-      // o nome de quem vendeu junto.
+      // o nome de quem vendeu junto. sold_by é quem recebe o crédito da venda —
+      // o dono pode escolher um comissionado da equipe; o banco valida e, se
+      // vier algo fora da equipe, cai de volta pra quem lançou.
       const stockOwnerId = storeOwnerId ?? userId;
 
       const ref = Date.now().toString(36).toUpperCase().slice(-4);
@@ -240,6 +266,7 @@ function VenderPage() {
           quantity: row.quantity,
           unit_price: row.unit_price,
           source: origin,
+          sold_by: effectiveSellerId,
           note: row.note ? `Venda ${ref} — ${row.note}` : `Venda ${ref}`,
         })),
       );
@@ -249,16 +276,19 @@ function VenderPage() {
       toast.success("Venda registrada e estoque atualizado");
       setLines(null);
       setTotalDraft("");
+      setSellerId(null);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["movements"] });
       queryClient.invalidateQueries({ queryKey: ["sales"] });
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "Erro ao registrar a venda"),
+    onError: (error) =>
+      toast.error(error instanceof Error ? error.message : "Erro ao registrar a venda"),
   });
 
   const update = (key: number, patch: Partial<SaleLine>) =>
     setLines((current) => {
-      const next = current?.map((line) => (line.key === key ? { ...line, ...patch } : line)) ?? null;
+      const next =
+        current?.map((line) => (line.key === key ? { ...line, ...patch } : line)) ?? null;
       if (next) setTotalDraft(sumOf(next).toFixed(2));
       return next;
     });
@@ -277,7 +307,10 @@ function VenderPage() {
         })),
         total,
       );
-      return current.map((line, index) => ({ ...line, unit_price: prices[index] ?? line.unit_price }));
+      return current.map((line, index) => ({
+        ...line,
+        unit_price: prices[index] ?? line.unit_price,
+      }));
     });
   };
 
@@ -352,6 +385,25 @@ function VenderPage() {
               <p className="label-caps">Conferência</p>
               <h2 className="mt-2 text-3xl">{lines.length} item(ns) para dar baixa</h2>
             </div>
+            {sellers.length > 0 ? (
+              <div>
+                <label className="label-caps" htmlFor="vendido-por">
+                  Vendido por
+                </label>
+                <select
+                  id="vendido-por"
+                  value={effectiveSellerId ?? ""}
+                  onChange={(event) => setSellerId(event.target.value)}
+                  className={`mt-2 w-52 ${inputClass}`}
+                >
+                  {sellers.map((seller) => (
+                    <option key={seller.id} value={seller.id}>
+                      {seller.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="text-right">
               <label className="label-caps" htmlFor="total-venda">
                 Total da venda
@@ -365,7 +417,9 @@ function VenderPage() {
                 onChange={(event) => applyTotal(event.target.value)}
                 className={`mt-2 w-40 text-right ${inputClass}`}
               />
-              <p className="mt-1 text-xs text-muted-foreground">Mudar aqui redivide entre os itens</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mudar aqui redivide entre os itens
+              </p>
             </div>
           </div>
 
@@ -386,7 +440,9 @@ function VenderPage() {
               <tbody>
                 {lines.map((line) => {
                   const product = productById.get(line.productId);
-                  const lineProfit = product ? (line.unit_price - product.purchase_price) * line.quantity : 0;
+                  const lineProfit = product
+                    ? (line.unit_price - product.purchase_price) * line.quantity
+                    : 0;
                   const short = product ? line.quantity > product.quantity : false;
                   return (
                     <tr key={line.key} className="border-b border-border last:border-0">

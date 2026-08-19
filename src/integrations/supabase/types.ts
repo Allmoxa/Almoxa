@@ -26,6 +26,7 @@ export type Database = {
           quantity: number
           reverses_id: string | null
           reversed_at: string | null
+          sold_by: string | null
           source: string
           unit_cost: number
           unit_price: number
@@ -42,6 +43,7 @@ export type Database = {
           quantity: number
           reverses_id?: string | null
           reversed_at?: string | null
+          sold_by?: string | null
           source?: string
           unit_cost?: number
           unit_price?: number
@@ -58,6 +60,7 @@ export type Database = {
           quantity?: number
           reverses_id?: string | null
           reversed_at?: string | null
+          sold_by?: string | null
           source?: string
           unit_cost?: number
           unit_price?: number

@@ -206,7 +206,7 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         ref={stageRef}
-        className="relative mx-auto max-w-full cursor-pointer"
+        className="relative mx-auto max-w-full cursor-pointer select-none"
         style={{
           perspective: 1400,
           width: "var(--cube-size)",
