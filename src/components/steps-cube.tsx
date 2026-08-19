@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
@@ -20,8 +21,6 @@ const HALF = "calc(var(--cube-size) / 2)";
 const TILT = -14;
 const OPEN_TILT = -66;
 const OPEN_DURATION_MS = 750;
-// Graus por pixel arrastado -- ~90deg (uma face) a cada ~257px de arraste.
-const DRAG_SENSITIVITY = 0.35;
 
 const CARDBOARD = "#C19A6C";
 const CARDBOARD_LIGHT = "#D8B78C";
@@ -64,29 +63,14 @@ function SpinIndicatorIcon() {
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
   const [opening, setOpening] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [showIndicator, setShowIndicator] = useState(false);
   const navigate = useNavigate();
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const rotorRef = useRef<HTMLDivElement | null>(null);
   const indicatorRef = useRef<HTMLDivElement | null>(null);
-  // Offset livre de arraste, em graus -- soma ao ângulo da face selecionada e
-  // fica ali depois de soltar (não volta pra face mais próxima sozinho).
-  const offsetRef = useRef(0);
-  const dragRef = useRef({ pointerId: -1, startX: 0, startOffset: 0 });
 
-  const currentAngle = () => index * -90 + offsetRef.current;
-
-  const applyRotorTransform = () => {
-    const el = rotorRef.current;
-    if (!el) return;
-    el.style.transform = `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
-      opening ? 1.16 : 1
-    })`;
-  };
-
-  const handleTest = () => {
+  const handleTest = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
     if (opening) return;
     setOpening(true);
     window.setTimeout(() => {
@@ -116,49 +100,30 @@ export function StepsCube({ steps }: { steps: Step[] }) {
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && !opening) moveIndicator(event);
-
-    if (dragRef.current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - dragRef.current.startX;
-    offsetRef.current = dragRef.current.startOffset + dx * DRAG_SENSITIVITY;
-    applyRotorTransform();
   };
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (opening || (event.pointerType === "mouse" && event.button !== 0)) return;
-    stageRef.current?.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startOffset: offsetRef.current,
-    };
-    if (rotorRef.current) rotorRef.current.style.transition = "none";
-    setIsDragging(true);
-  };
-
-  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.pointerId !== event.pointerId) return;
-    dragRef.current.pointerId = -1;
-    if (rotorRef.current) rotorRef.current.style.transition = "";
-    setIsDragging(false);
+  // Um clique em qualquer ponto da caixa gira pra próxima face -- sem
+  // arrastar, sem segurar. O botão "Testar" tem seu próprio handler acima e
+  // já para a propagação antes de chegar aqui.
+  const spin = () => {
+    if (opening) return;
+    setIndex((i) => (i + 1) % steps.length);
   };
 
   return (
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         ref={stageRef}
-        className={`relative mx-auto max-w-full touch-none ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+        className="relative mx-auto max-w-full cursor-pointer"
         style={{
           perspective: 1400,
           width: "var(--cube-size)",
           height: "calc(var(--cube-size) + 40px)",
-          userSelect: isDragging ? "none" : undefined,
         }}
+        onClick={spin}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         onPointerMove={onPointerMove}
-        onPointerDown={onPointerDown}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
@@ -176,30 +141,25 @@ export function StepsCube({ steps }: { steps: Step[] }) {
           style={{ opacity: showIndicator ? 1 : 0, transition: "opacity 200ms ease" }}
         >
           <div
-            className="flex -translate-x-1/2 flex-col items-center transition-transform duration-200"
-            style={{
-              transform: `translateY(calc(-100% - 10px)) scale(${isDragging ? 0.85 : 1})`,
-            }}
+            className="flex -translate-x-1/2 flex-col items-center"
+            style={{ transform: "translateY(calc(-100% - 10px))" }}
           >
-            {!isDragging ? (
-              <span
-                className="mb-1 font-sans text-[11px] font-medium"
-                style={{ color: INDICATOR_INK }}
-              >
-                Gire
-              </span>
-            ) : null}
+            <span
+              className="mb-1 font-sans text-[11px] font-medium"
+              style={{ color: INDICATOR_INK }}
+            >
+              Gire
+            </span>
             <SpinIndicatorIcon />
           </div>
         </div>
 
         <div
-          ref={rotorRef}
           className="relative transition-all duration-700 ease-in-out"
           style={{
             ...faceSize,
             transformStyle: "preserve-3d",
-            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
+            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
               opening ? 1.16 : 1
             })`,
             opacity: opening ? 0.4 : 1,
@@ -312,8 +272,8 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             key={step.label}
             type="button"
             aria-label={`Ver passo ${step.label}`}
-            onClick={() => {
-              offsetRef.current = 0;
+            onClick={(event) => {
+              event.stopPropagation();
               setIndex(i);
             }}
             disabled={opening}
