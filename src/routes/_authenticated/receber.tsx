@@ -121,7 +121,7 @@ function ReceberPage() {
               sku: informed || (await freeSku(row.name, storeId)),
               purchase_price: row.purchase_price,
               sale_price: row.sale_price,
-              quantity: 0,
+              // Sem quantity: o saldo nasce do movimento de entrada logo abaixo.
               notes: row.note || null,
             })
             .select("id")

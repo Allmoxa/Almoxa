@@ -118,7 +118,8 @@ function EstoqueDono() {
           sku: values.sku || (await freeSku(values.name, storeId)),
           purchase_price: values.purchase_price,
           sale_price: values.sale_price,
-          quantity: 0,
+          // Sem quantity: o saldo nasce do movimento de entrada, e o INSERT
+          // nessa coluna foi revogado justamente para não haver outra via.
         })
         .select("id")
         .single();

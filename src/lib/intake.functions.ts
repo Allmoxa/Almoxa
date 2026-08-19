@@ -5,7 +5,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const fileSchema = z.object({
   name: z.string().max(300),
   mimeType: z.string().max(120),
-  dataUrl: z.string().max(30_000_000),
+  // Precisa ser data: URI. O valor vai direto no corpo mandado ao Gemini, e o
+  // campo aceitava qualquer string -- inclusive uma URL http, que faria a API
+  // do Google buscar o endereco escolhido por quem chamou e devolver o conteudo
+  // ja interpretado. Nao e a nossa rede que responde, mas continua sendo a nossa
+  // chave buscando o que mandarem.
+  dataUrl: z
+    .string()
+    .max(30_000_000)
+    .refine((value) => value.startsWith("data:"), { message: "Arquivo inválido." }),
 });
 
 const inputSchema = z.object({
