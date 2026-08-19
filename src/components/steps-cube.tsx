@@ -21,8 +21,6 @@ const HALF = "calc(var(--cube-size) / 2)";
 const TILT = -14;
 const OPEN_TILT = -66;
 const OPEN_DURATION_MS = 750;
-// Graus por pixel arrastado -- ~90deg (uma face) a cada ~257px de arraste.
-const DRAG_SENSITIVITY = 0.35;
 
 const CARDBOARD = "#C19A6C";
 const CARDBOARD_LIGHT = "#D8B78C";
@@ -46,6 +44,8 @@ const FOLLOW_EASE = 0.14;
 const PRESS_SPIN_MS = 380;
 const BUTTON_BG = "#11110F";
 const ARROW_COLOR = "#F5EBDD";
+// Some encolhendo até quase sumir, não só um fade -- "minúsculo", não 0.85.
+const HIDDEN_SCALE = 0.12;
 
 export function StepsCube({ steps }: { steps: Step[] }) {
   const [index, setIndex] = useState(0);
@@ -55,17 +55,11 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   const navigate = useNavigate();
 
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const rotorRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLDivElement | null>(null);
   const arrowRef = useRef<SVGSVGElement | null>(null);
 
-  // Rotação livre acumulada pelo arraste, em graus -- soma ao ângulo da face
-  // selecionada e fica ali depois de soltar (sem voltar pra face mais próxima).
-  const offsetRef = useRef(0);
-  const dragRef = useRef({ pointerId: -1, startX: 0, startOffset: 0 });
-
   // Estado do botão-seguidor: um rAF só, cuidando de posição (lerp) e do giro
-  // da seta (spin de entrada + acompanha o offset do arraste).
+  // de entrada da seta.
   const followRef = useRef({
     frame: null as number | null,
     targetX: 0,
@@ -75,16 +69,6 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     pressStart: 0,
     reduceMotion: false,
   });
-
-  const currentAngle = () => index * -90 + offsetRef.current;
-
-  const applyRotorTransform = () => {
-    const el = rotorRef.current;
-    if (!el) return;
-    el.style.transform = `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
-      opening ? 1.16 : 1
-    })`;
-  };
 
   const handleTest = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -138,7 +122,7 @@ export function StepsCube({ steps }: { steps: Step[] }) {
       }
     }
     if (arrowRef.current) {
-      arrowRef.current.style.transform = `rotate(${spin + offsetRef.current}deg)`;
+      arrowRef.current.style.transform = `rotate(${spin}deg)`;
     }
 
     const settled =
@@ -194,26 +178,13 @@ export function StepsCube({ steps }: { steps: Step[] }) {
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" && !opening) {
-      setFollowTarget(event, false);
-      startFollowLoop();
-    }
-
-    if (dragRef.current.pointerId !== event.pointerId) return;
-    const dx = event.clientX - dragRef.current.startX;
-    offsetRef.current = dragRef.current.startOffset + dx * DRAG_SENSITIVITY;
-    applyRotorTransform();
+    if (event.pointerType !== "mouse" || opening) return;
+    setFollowTarget(event, false);
+    startFollowLoop();
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (opening || (event.pointerType === "mouse" && event.button !== 0)) return;
-    stageRef.current?.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startOffset: offsetRef.current,
-    };
-    if (rotorRef.current) rotorRef.current.style.transition = "none";
     setPressed(true);
     if (!followRef.current.reduceMotion) {
       followRef.current.pressStart = performance.now();
@@ -221,30 +192,33 @@ export function StepsCube({ steps }: { steps: Step[] }) {
     }
   };
 
-  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.pointerId !== event.pointerId) return;
-    dragRef.current.pointerId = -1;
-    if (rotorRef.current) rotorRef.current.style.transition = "";
-    setPressed(false);
+  const endPress = () => setPressed(false);
+
+  // Um clique em qualquer ponto da caixa gira pra próxima face -- sem
+  // arrastar, sem segurar. O botão "Testar" já para a propagação antes de
+  // chegar aqui.
+  const spin = () => {
+    if (opening) return;
+    setIndex((i) => (i + 1) % steps.length);
   };
 
   return (
     <div className="mx-auto w-fit max-w-full" style={{ "--cube-size": CUBE_SIZE } as CSSProperties}>
       <div
         ref={stageRef}
-        className={`relative mx-auto max-w-full touch-none ${pressed ? "cursor-grabbing" : "cursor-grab"}`}
+        className="relative mx-auto max-w-full cursor-pointer"
         style={{
           perspective: 1400,
           width: "var(--cube-size)",
           height: "calc(var(--cube-size) + 40px)",
-          userSelect: pressed ? "none" : undefined,
         }}
+        onClick={spin}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
         onPointerMove={onPointerMove}
         onPointerDown={onPointerDown}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+        onPointerUp={endPress}
+        onPointerCancel={endPress}
       >
         <div
           className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-700"
@@ -256,55 +230,11 @@ export function StepsCube({ steps }: { steps: Step[] }) {
         />
 
         <div
-          ref={buttonRef}
-          aria-hidden="true"
-          className="pointer-events-none absolute top-0 left-0 z-20"
-          style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
-        >
-          <div
-            className="h-full w-full transition-[opacity,transform] duration-300 ease-out"
-            style={{
-              opacity: buttonVisible ? 1 : 0,
-              transform: `scale(${buttonVisible ? 1 : 0.85})`,
-            }}
-          >
-            <div
-              className="h-full w-full transition-transform duration-150 ease-out"
-              style={{ transform: `scale(${pressed ? 0.9 : 1})` }}
-            >
-              <div
-                className="flex h-full w-full items-center justify-center rounded-full shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)]"
-                style={{ backgroundColor: BUTTON_BG }}
-              >
-                <svg
-                  ref={arrowRef}
-                  width="18"
-                  height="18"
-                  viewBox="0 0 18 18"
-                  aria-hidden="true"
-                  style={{ transformOrigin: "50% 50%" }}
-                >
-                  <path
-                    d="M14.3 5.6 A6 6 0 1 1 9.2 3"
-                    fill="none"
-                    stroke={ARROW_COLOR}
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                  />
-                  <path d="M14.3 5.6 L15.1 2.2 L11.6 3.5 Z" fill={ARROW_COLOR} />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          ref={rotorRef}
           className="relative transition-all duration-700 ease-in-out"
           style={{
             ...faceSize,
             transformStyle: "preserve-3d",
-            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${currentAngle()}deg) scale(${
+            transform: `rotateX(${opening ? OPEN_TILT : TILT}deg) rotateY(${index * -90}deg) scale(${
               opening ? 1.16 : 1
             })`,
             opacity: opening ? 0.4 : 1,
@@ -407,6 +337,50 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             }}
           />
         </div>
+
+        {/* Depois do rotor no DOM de propósito -- fica sempre por cima das faces 3D. */}
+        <div
+          ref={buttonRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 left-0 z-50"
+          style={{ width: BUTTON_SIZE, height: BUTTON_SIZE }}
+        >
+          <div
+            className="h-full w-full transition-[opacity,transform] duration-300 ease-out"
+            style={{
+              opacity: buttonVisible ? 1 : 0,
+              transform: `scale(${buttonVisible ? 1 : HIDDEN_SCALE})`,
+            }}
+          >
+            <div
+              className="h-full w-full transition-transform duration-150 ease-out"
+              style={{ transform: `scale(${pressed ? 0.9 : 1})` }}
+            >
+              <div
+                className="flex h-full w-full items-center justify-center rounded-full shadow-[0_6px_16px_-4px_rgba(0,0,0,0.35)]"
+                style={{ backgroundColor: BUTTON_BG }}
+              >
+                <svg
+                  ref={arrowRef}
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  aria-hidden="true"
+                  style={{ transformOrigin: "50% 50%" }}
+                >
+                  <path
+                    d="M14.3 5.6 A6 6 0 1 1 9.2 3"
+                    fill="none"
+                    stroke={ARROW_COLOR}
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                  <path d="M14.3 5.6 L15.1 2.2 L11.6 3.5 Z" fill={ARROW_COLOR} />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div
@@ -418,8 +392,8 @@ export function StepsCube({ steps }: { steps: Step[] }) {
             key={step.label}
             type="button"
             aria-label={`Ver passo ${step.label}`}
-            onClick={() => {
-              offsetRef.current = 0;
+            onClick={(event) => {
+              event.stopPropagation();
               setIndex(i);
             }}
             disabled={opening}

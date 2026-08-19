@@ -79,7 +79,7 @@ function Landing() {
           <LogoRefreshButton />
         </ScrollFade>
 
-        <nav className="hidden items-center gap-5 text-base md:flex">
+        <nav className="hidden items-center gap-9 text-base md:flex">
           <MagneticNavItem href="#inicio" shape="circle" alwaysDrawn labelClassName="font-medium">
             Início
           </MagneticNavItem>
