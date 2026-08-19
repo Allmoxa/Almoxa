@@ -10,6 +10,7 @@ import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { MagneticLink } from "@/components/magnetic-button";
+import { SpinCursor } from "@/components/spin-cursor";
 import { SketchUnderline, SketchCircle, SketchDivider } from "@/components/sketch";
 import { useHeroParallax } from "@/hooks/use-hero-parallax";
 import { useFooterLineReveal } from "@/hooks/use-footer-line-reveal";
@@ -72,6 +73,7 @@ function Landing() {
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
+      <SpinCursor />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <ScrollFade className="font-logo text-3xl font-semibold">
