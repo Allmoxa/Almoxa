@@ -293,7 +293,15 @@
   --chart-2: #9c87f5;
   --chart-3: #b05730;
   --chart-4: #dbd3f0;
-  --chart-5: #b4552d;
+  /*
+   * Saídas (--chart-5) era #b4552d: laranja queimado praticamente igual ao
+   * terracota do --chart-1 usado em Entradas — as duas linhas do gráfico
+   * "Entradas x Saídas" liam como uma só. Trocado pelo roxo da paleta (mesma
+   * família do --chart-2), um passo mais escuro pra fechar 3:1 contra o card
+   * branco. Par validado: ΔE 26 em visão normal e 24,7 em protanopia — verde
+   * foi descartado porque cai pra ΔE 0,5 contra o terracota nesse mesmo teste.
+   */
+  --chart-5: #7c5cd6;
 }
 
 /*
