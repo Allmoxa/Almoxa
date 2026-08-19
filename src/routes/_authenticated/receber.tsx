@@ -92,11 +92,17 @@ function ReceberPage() {
         // produto a mais, que aparece na lista e o dono junta. O erro contrário
         // — dois produtos virarem um — é o que se está consertando aqui, e esse
         // some sem deixar rastro, levando junto o preço e a entrada da nota.
-        const { data: existing } = informed
-          ? await supabase.from("products").select("id").eq("sku", informed).limit(1).maybeSingle()
-          : await supabase.from("products").select("id").eq("name", row.name).limit(1).maybeSingle();
+        const [column, value] = informed
+          ? (["sku", informed] as const)
+          : (["name", row.name] as const);
+        const found = await supabase
+          .from("products")
+          .select("id")
+          .eq(column, value)
+          .limit(1)
+          .maybeSingle();
 
-        let productId = existing?.id;
+        let productId = found.data?.id;
         if (productId) {
           const { error } = await supabase
             .from("products")
