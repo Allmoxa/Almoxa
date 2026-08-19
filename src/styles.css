@@ -527,4 +527,18 @@
   .logo-refresh-button:hover .logo-refresh-path {
     animation: none;
   }
+
+  /* Menu da engrenagem: some da escala/translação, sobra só um fade curto. */
+  .animate-in,
+  .animate-out {
+    --tw-animation-duration: 100ms;
+    --tw-enter-scale: 1;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-enter-rotate: 0;
+    --tw-exit-scale: 1;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-exit-rotate: 0;
+  }
 }

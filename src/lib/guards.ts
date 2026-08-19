@@ -25,8 +25,3 @@ export async function requireOwner() {
   const owner = roles.includes("admin") || roles.includes("onisciente");
   if (!owner) throw redirect({ to: "/estoque" });
 }
-
-export async function requireOnisciente() {
-  const roles = await rolesOf();
-  if (!roles.includes("onisciente")) throw redirect({ to: "/estoque" });
-}

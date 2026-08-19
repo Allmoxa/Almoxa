@@ -196,6 +196,24 @@ export const createUser = createServerFn({ method: "POST" })
     return { id: created.user.id };
   });
 
+export const deleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => userIdSchema.parse(data))
+  .handler(async ({ data, context }): Promise<{ id: string }> => {
+    const supabaseAdmin = await requireOnisciente(context.userId);
+
+    if (data.userId === context.userId) {
+      throw new Error("Você não pode apagar a própria conta.");
+    }
+
+    // Produtos, movimentações, papéis e a loja do comissionado saem juntos —
+    // tudo referencia auth.users com ON DELETE CASCADE.
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message ?? "Não foi possível apagar o usuário.");
+
+    return { id: data.userId };
+  });
+
 export const getUserDetail = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => userIdSchema.parse(data))
