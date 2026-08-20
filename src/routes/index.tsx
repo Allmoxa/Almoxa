@@ -110,9 +110,18 @@ function Landing() {
           </MagneticNavItem>
         </nav>
 
-        <MagneticNavItem to="/auth" shape="brackets" labelClassName="text-lg font-semibold">
-          Entrar
-        </MagneticNavItem>
+        <div className="flex items-center gap-5">
+          <MagneticNavItem
+            shape="brackets"
+            labelClassName="text-lg font-semibold"
+            onClick={() => setCreating(true)}
+          >
+            Criar conta
+          </MagneticNavItem>
+          <MagneticNavItem to="/auth" shape="brackets" labelClassName="text-lg font-semibold">
+            Entrar
+          </MagneticNavItem>
+        </div>
       </header>
 
       <SketchDivider />
@@ -133,10 +142,16 @@ function Landing() {
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
             <div className="flex flex-wrap items-center gap-5">
-              <CardboardLiquidButton to="/auth">Entrar na conta</CardboardLiquidButton>
-              <MagneticNavItem shape="underline" onClick={() => setCreating(true)}>
+              <CardboardLiquidButton to="/auth" ariaLabel="Entrar na conta">
+                Entrar na conta
+              </CardboardLiquidButton>
+              <CardboardLiquidButton
+                variant="secondary"
+                ariaLabel="Criar conta"
+                onClick={() => setCreating(true)}
+              >
                 Criar conta
-              </MagneticNavItem>
+              </CardboardLiquidButton>
             </div>
           </div>
 

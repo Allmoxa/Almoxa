@@ -15,9 +15,31 @@ const SETTLE_EPSILON = 0.03;
  * de tocar o botão) precisa de JS, e segue o mesmo spring amortecido do
  * MagneticNavItem -- só que num único elemento, já que aqui não tem texto se
  * movendo por dentro do botão.
+ *
+ * `to` navega (Entrar na conta); `onClick` só dispara uma ação (Criar conta
+ * abre o dialog) -- nunca os dois. `variant="secondary"` é o mesmo círculo em
+ * versão contorno (papelão sem o preenchimento seco), pra par com o botão
+ * principal sem competir com ele.
  */
-export function CardboardLiquidButton({ to, children }: { to: string; children: ReactNode }) {
-  const linkRef = useRef<HTMLAnchorElement | null>(null);
+export function CardboardLiquidButton({
+  to,
+  onClick,
+  variant = "primary",
+  ariaLabel,
+  children,
+}: {
+  to?: string;
+  onClick?: () => void;
+  variant?: "primary" | "secondary";
+  ariaLabel: string;
+  children: ReactNode;
+}) {
+  // HTMLElement, não HTMLAnchorElement: precisa caber tanto <a>/Link quanto
+  // <button> (modo onClick), igual ao MagneticNavItem.
+  const linkRef = useRef<HTMLElement | null>(null);
+  const setLinkRef = (el: HTMLElement | null) => {
+    linkRef.current = el;
+  };
 
   useEffect(() => {
     const link = linkRef.current;
@@ -104,75 +126,98 @@ export function CardboardLiquidButton({ to, children }: { to: string; children: 
     };
   }, []);
 
-  return (
-    <Link
-      ref={linkRef}
-      to={to}
-      aria-label="Entrar na conta"
-      className="cardboard-liquid-button relative mt-10 inline-flex shrink-0"
-      style={{ willChange: "transform" }}
-    >
-      <span className="cardboard-liquid-circle relative flex items-center justify-center overflow-hidden rounded-full">
-        <span className="cardboard-liquid-dry absolute inset-0 rounded-full" />
+  const circle = (
+    <span className="cardboard-liquid-circle relative flex items-center justify-center overflow-hidden rounded-full">
+      <span className="cardboard-liquid-dry absolute inset-0 rounded-full" />
 
+      <svg
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox="0 0 100 100"
+        aria-hidden="true"
+      >
+        <path
+          d="M52 2 C 78 1, 98 21, 99 49 C 100 76, 80 99, 52 98 C 25 97, 1 78, 2 50 C 3 23, 26 3, 52 2 Z"
+          fill="none"
+          stroke="#49392C"
+          strokeWidth="1.6"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <span className="cardboard-liquid-wet absolute inset-0">
         <svg
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 100 100"
+          className="cardboard-liquid-wave cardboard-liquid-wave-a absolute inset-x-0 -top-[6%] h-[16%] w-full"
+          viewBox="0 0 100 16"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M0 9 C 16 3, 34 13, 50 8 C 66 3, 84 13, 100 8 V16 H0 Z" fill="#302D28" />
+        </svg>
+        <svg
+          className="cardboard-liquid-wave cardboard-liquid-wave-b absolute inset-x-0 -top-[6%] h-[16%] w-full"
+          viewBox="0 0 100 16"
+          preserveAspectRatio="none"
           aria-hidden="true"
         >
           <path
-            d="M52 2 C 78 1, 98 21, 99 49 C 100 76, 80 99, 52 98 C 25 97, 1 78, 2 50 C 3 23, 26 3, 52 2 Z"
-            fill="none"
-            stroke="#49392C"
-            strokeWidth="1.6"
-            vectorEffect="non-scaling-stroke"
+            d="M0 11 C 20 15, 38 5, 56 10 C 72 14, 88 6, 100 10 V16 H0 Z"
+            fill="#302D28"
+            opacity="0.55"
           />
         </svg>
+        <span className="absolute inset-x-0 top-[9%] bottom-0 bg-[#302D28]" />
+      </span>
 
-        <span className="cardboard-liquid-wet absolute inset-0">
-          <svg
-            className="cardboard-liquid-wave cardboard-liquid-wave-a absolute inset-x-0 -top-[6%] h-[16%] w-full"
-            viewBox="0 0 100 16"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path d="M0 9 C 16 3, 34 13, 50 8 C 66 3, 84 13, 100 8 V16 H0 Z" fill="#302D28" />
-          </svg>
-          <svg
-            className="cardboard-liquid-wave cardboard-liquid-wave-b absolute inset-x-0 -top-[6%] h-[16%] w-full"
-            viewBox="0 0 100 16"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M0 11 C 20 15, 38 5, 56 10 C 72 14, 88 6, 100 10 V16 H0 Z"
-              fill="#302D28"
-              opacity="0.55"
-            />
-          </svg>
-          <span className="absolute inset-x-0 top-[9%] bottom-0 bg-[#302D28]" />
-        </span>
-
-        <span className="cardboard-liquid-label relative z-10 flex flex-col items-center justify-center gap-0.5 px-3 text-center font-sans text-xs font-medium text-[#2E2924] sm:text-sm">
-          <span>
-            {children}
-            <span className="cardboard-liquid-arrow ml-1 inline-block" aria-hidden="true">
-              ↗
-            </span>
-          </span>
-        </span>
-        <span
-          aria-hidden="true"
-          className="cardboard-liquid-label cardboard-liquid-label-wet absolute inset-0 z-10 flex flex-col items-center justify-center gap-0.5 px-3 text-center font-sans text-xs font-medium text-[#F7EEDC] sm:text-sm"
-        >
-          <span>
-            {children}
-            <span className="cardboard-liquid-arrow ml-1 inline-block" aria-hidden="true">
-              ↗
-            </span>
+      <span className="cardboard-liquid-label relative z-10 flex flex-col items-center justify-center gap-0.5 px-3 text-center font-sans text-xs font-medium text-[#2E2924] sm:text-sm">
+        <span>
+          {children}
+          <span className="cardboard-liquid-arrow ml-1 inline-block" aria-hidden="true">
+            ↗
           </span>
         </span>
       </span>
-    </Link>
+      <span
+        aria-hidden="true"
+        className="cardboard-liquid-label cardboard-liquid-label-wet absolute inset-0 z-10 flex flex-col items-center justify-center gap-0.5 px-3 text-center font-sans text-xs font-medium text-[#F7EEDC] sm:text-sm"
+      >
+        <span>
+          {children}
+          <span className="cardboard-liquid-arrow ml-1 inline-block" aria-hidden="true">
+            ↗
+          </span>
+        </span>
+      </span>
+    </span>
+  );
+
+  const className = `cardboard-liquid-button relative mt-10 inline-flex shrink-0 ${
+    variant === "secondary" ? "cardboard-liquid-secondary" : ""
+  }`;
+
+  if (to) {
+    return (
+      <Link
+        ref={setLinkRef}
+        to={to}
+        aria-label={ariaLabel}
+        className={className}
+        style={{ willChange: "transform" }}
+      >
+        {circle}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      ref={setLinkRef}
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={className}
+      style={{ willChange: "transform" }}
+    >
+      {circle}
+    </button>
   );
 }
