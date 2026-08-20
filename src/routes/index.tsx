@@ -110,7 +110,7 @@ function Landing() {
           </MagneticNavItem>
         </nav>
 
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-10">
           <MagneticNavItem
             shape="brackets"
             labelClassName="text-lg font-semibold"
@@ -141,7 +141,7 @@ function Landing() {
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <div className="flex flex-wrap items-center gap-5">
+            <div className="flex flex-wrap items-center gap-14">
               <CardboardLiquidButton to="/auth" ariaLabel="Entrar na conta">
                 Entrar na conta
               </CardboardLiquidButton>

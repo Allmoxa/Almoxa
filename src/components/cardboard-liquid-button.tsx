@@ -2,17 +2,18 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, type ReactNode } from "react";
 import { springStep, type Vec2 } from "@/lib/spring";
 
-const ZONE_PADDING = 70;
-const MAX_OFFSET_PX = 12;
-const PULL_STRENGTH = 0.4;
+const ZONE_PADDING = 36;
+const MAX_OFFSET_PX = 7;
+const PULL_STRENGTH = 0.28;
 const SETTLE_EPSILON = 0.03;
 
 /**
  * Botão circular "papelão seco absorvendo líquido" -- o preenchimento e o
  * texto creme recortado vivem inteiramente em CSS (ver .cardboard-liquid-*
  * em styles.css, disparado por :hover/:focus-visible/:active). Só o
- * magnetismo (puxão de até 12px em direção ao cursor, começando ~70px antes
- * de tocar o botão) precisa de JS, e segue o mesmo spring amortecido do
+ * magnetismo (puxão de até 7px em direção ao cursor, começando ~36px antes
+ * de tocar o botão -- zona curta de propósito, pra não brigar com um botão
+ * vizinho perto) precisa de JS, e segue o mesmo spring amortecido do
  * MagneticNavItem -- só que num único elemento, já que aqui não tem texto se
  * movendo por dentro do botão.
  *

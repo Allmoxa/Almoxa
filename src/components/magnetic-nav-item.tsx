@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { springStep, type Vec2 } from "@/lib/spring";
 
-const ZONE_PADDING = 70;
-const MAX_OFFSET_X = 10;
-const MAX_OFFSET_Y = 7;
-const PULL_STRENGTH = 0.32;
+const ZONE_PADDING = 36;
+const MAX_OFFSET_X = 6;
+const MAX_OFFSET_Y = 4;
+const PULL_STRENGTH = 0.24;
 const SETTLE_EPSILON = 0.03;
 
 type Shape = "circle" | "underline" | "brackets";
@@ -50,7 +50,8 @@ type MagneticNavItemProps = {
 
 /**
  * Item de navbar com atração magnética + contorno desenhado à mão que surge
- * quando o cursor se aproxima (~60px antes de tocar no texto) e some no
+ * quando o cursor se aproxima (~36px antes de tocar no texto -- zona curta,
+ * senão dois itens vizinhos disputam o cursor ao mesmo tempo) e some no
  * sentido inverso ao afastar. Física do arrasto reaproveita o spring do
  * MagneticLink; o traço em si é puro CSS (stroke-dasharray/dashoffset via
  * data-drawn, ver .magnetic-outline-path em styles.css) -- só a detecção de
