@@ -11,6 +11,7 @@ import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { CardboardLiquidButton } from "@/components/cardboard-liquid-button";
 import { MagneticNavItem } from "@/components/magnetic-nav-item";
+import { SiteGate } from "@/components/site-gate";
 import { SketchDivider } from "@/components/sketch";
 import { useHeroParallax } from "@/hooks/use-hero-parallax";
 import { useFooterLineReveal } from "@/hooks/use-footer-line-reveal";
@@ -32,7 +33,11 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  component: Landing,
+  component: () => (
+    <SiteGate>
+      <Landing />
+    </SiteGate>
+  ),
 });
 
 const steps = [
