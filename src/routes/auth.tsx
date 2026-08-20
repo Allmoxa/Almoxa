@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
+import { PasswordInput } from "@/components/ui/password-input";
+import { CreateAccountDialog } from "@/components/create-account-dialog";
 import { LoginStickers } from "@/components/login-stickers";
 import { LogoBracket } from "@/components/logo-bracket";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +39,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -108,9 +111,8 @@ function AuthPage() {
               <label htmlFor="password" className="label-caps">
                 Senha
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -142,10 +144,19 @@ function AuthPage() {
           </button>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Novos acessos são liberados por um administrador.
+            Ainda não tem conta?{" "}
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              Criar conta
+            </button>
           </p>
         </div>
       </div>
+
+      <CreateAccountDialog open={creating} onOpenChange={setCreating} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepsCube } from "@/components/steps-cube";
 import { SmoothScroll } from "@/components/smooth-scroll";
@@ -10,6 +10,7 @@ import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { CardboardLiquidButton } from "@/components/cardboard-liquid-button";
+import { CreateAccountDialog } from "@/components/create-account-dialog";
 import { MagneticNavItem } from "@/components/magnetic-nav-item";
 import { SiteGate } from "@/components/site-gate";
 import { SketchDivider } from "@/components/sketch";
@@ -66,6 +67,7 @@ function Landing() {
     boxRef: heroBoxRef,
   } = useHeroParallax();
   const { footerRef, lineRef: footerLineRef } = useFooterLineReveal();
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -130,7 +132,12 @@ function Landing() {
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <CardboardLiquidButton to="/auth">Entrar na conta</CardboardLiquidButton>
+            <div className="flex flex-wrap items-center gap-5">
+              <CardboardLiquidButton to="/auth">Entrar na conta</CardboardLiquidButton>
+              <MagneticNavItem shape="underline" onClick={() => setCreating(true)}>
+                Criar conta
+              </MagneticNavItem>
+            </div>
           </div>
 
           <div ref={heroBoxRef} style={{ willChange: "transform" }}>
@@ -156,6 +163,8 @@ function Landing() {
           Almoxá — controle de estoque simples para quem compra e revende.
         </footer>
       </main>
+
+      <CreateAccountDialog open={creating} onOpenChange={setCreating} />
     </div>
   );
 }
