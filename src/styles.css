@@ -260,21 +260,6 @@
     #b68b58;
 }
 
-/*
- * Botão secundário (Criar conta): mesmo círculo, mesmo traço à mão desenhado
- * pelo SVG e a mesma onda no hover -- só sem o preenchimento seco de fundo,
- * pra ficar em contorno e não competir com o botão principal ao lado. Sem
- * borda própria: o contorno vem do path SVG já desenhado por cima (o mesmo
- * usado no primário), então não duplica um segundo círculo perfeito atrás.
- */
-.cardboard-liquid-secondary .cardboard-liquid-dry {
-  background: transparent;
-}
-
-.cardboard-liquid-secondary .cardboard-liquid-circle {
-  box-shadow: none;
-}
-
 .cardboard-liquid-wet {
   transform: translateY(105%);
   transition: transform 850ms cubic-bezier(0.16, 1, 0.3, 1);

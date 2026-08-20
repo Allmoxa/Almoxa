@@ -12,8 +12,16 @@ import { supabase } from "@/integrations/supabase/client";
 const schema = z
   .object({
     email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-    password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
+    // 8 e não 6: acompanha o mínimo que o próprio projeto Supabase exige (ver
+    // Authentication > Settings) -- abaixo disso o signUp falha no servidor
+    // mesmo passando na validação local. Sem exigir símbolo/maiúscula: NIST
+    // 800-63B recomenda comprimento sobre complexidade forçada.
+    password: z.string().min(8, { message: "A senha precisa de ao menos 8 caracteres" }).max(72),
     confirm: z.string(),
+    // Campo isca: só bot preenche (fica fora da tela, sem label, sem
+    // autocomplete que bata com nenhuma categoria conhecida). Humano de
+    // verdade nunca manda valor aqui.
+    hpField: z.string().max(0, { message: "Falha na validação" }).optional(),
   })
   .refine((data) => data.password === data.confirm, {
     message: "As senhas não coincidem",
@@ -46,6 +54,7 @@ export function CreateAccountDialog({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [hpField, setHpField] = useState("");
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
 
@@ -54,6 +63,7 @@ export function CreateAccountDialog({
     setEmail("");
     setPassword("");
     setConfirm("");
+    setHpField("");
     setSentTo(null);
   };
 
@@ -63,9 +73,16 @@ export function CreateAccountDialog({
       toast.error("Escolha o tipo do seu negócio");
       return;
     }
-    const parsed = schema.safeParse({ email, password, confirm });
+    const parsed = schema.safeParse({ email, password, confirm, hpField });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
+      return;
+    }
+
+    // Bot preencheu o campo isca: finge sucesso sem chamar o Supabase, pra não
+    // dar sinal nenhum de que foi barrado.
+    if (hpField) {
+      setSentTo(parsed.data.email);
       return;
     }
 
@@ -175,6 +192,18 @@ export function CreateAccountDialog({
                     </div>
                   ) : (
                     <form onSubmit={submit} className="mt-6 space-y-4">
+                      {/* Isca anti-bot: invisível e fora da ordem de tab para quem usa
+                          teclado/leitor de tela; sem name/autocomplete reconhecível, então
+                          preenchimento automático do navegador nunca cai aqui. */}
+                      <input
+                        type="text"
+                        value={hpField}
+                        onChange={(e) => setHpField(e.target.value)}
+                        tabIndex={-1}
+                        autoComplete="off"
+                        aria-hidden="true"
+                        className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden"
+                      />
                       <div>
                         <p className="label-caps">Tipo do seu negócio</p>
                         <div className="mt-2 grid grid-cols-2 gap-2">

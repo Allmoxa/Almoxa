@@ -31,8 +31,19 @@ export const Route = createFileRoute("/auth")({
 
 const schema = z.object({
   email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-  password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
+  // Só "não vazio" -- login não é hora de policiar força de senha (isso é
+  // coisa de cadastro/troca de senha), e apertar o mínimo aqui bloquearia
+  // login de conta antiga que nasceu com senha mais curta.
+  password: z.string().min(1, { message: "Informe a senha" }).max(72),
 });
+
+// Freio progressivo contra tentativa repetida direto do navegador: cada
+// login que falha soma 1, e a partir da 5ª tentativa a próxima só libera
+// depois de um intervalo que dobra (5s, 10s, 20s...). Não substitui o rate
+// limit do próprio projeto Supabase (Authentication > Rate Limits) -- é só
+// mais uma barreira, do lado de cá, contra um script batendo local sem parar.
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_BASE_MS = 5000;
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -40,6 +51,9 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -47,8 +61,24 @@ function AuthPage() {
     });
   }, [navigate]);
 
+  // Só existe um ticker enquanto há um bloqueio ativo -- destrava sozinho e
+  // atualiza a contagem regressiva sem manter um intervalo rodando à toa.
+  useEffect(() => {
+    if (lockedUntil == null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [lockedUntil]);
+
+  const lockedSecondsLeft =
+    lockedUntil != null && now < lockedUntil ? Math.ceil((lockedUntil - now) / 1000) : 0;
+  const isLocked = lockedSecondsLeft > 0;
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isLocked) {
+      toast.error(`Muitas tentativas. Espera ${lockedSecondsLeft}s e tenta de novo.`);
+      return;
+    }
     const parsed = schema.safeParse({ email, password });
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
@@ -58,8 +88,16 @@ function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword(parsed.data);
       if (error) throw error;
+      setFailedAttempts(0);
+      setLockedUntil(null);
       navigate({ to: "/estoque" });
     } catch (error) {
+      const next = failedAttempts + 1;
+      setFailedAttempts(next);
+      if (next >= LOCKOUT_THRESHOLD) {
+        const backoff = LOCKOUT_BASE_MS * 2 ** (next - LOCKOUT_THRESHOLD);
+        setLockedUntil(Date.now() + backoff);
+      }
       toast.error(error instanceof Error ? error.message : "Não foi possível continuar");
     } finally {
       setBusy(false);
@@ -121,11 +159,11 @@ function AuthPage() {
             </div>
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || isLocked}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? <BoxSpinner size={16} /> : null}
-              {busy ? "Entrando…" : "Entrar"}
+              {isLocked ? `Aguarde ${lockedSecondsLeft}s` : busy ? "Entrando…" : "Entrar"}
             </button>
           </form>
 

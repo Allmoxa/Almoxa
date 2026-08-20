@@ -18,20 +18,16 @@ const SETTLE_EPSILON = 0.03;
  * movendo por dentro do botão.
  *
  * `to` navega (Entrar na conta); `onClick` só dispara uma ação (Criar conta
- * abre o dialog) -- nunca os dois. `variant="secondary"` é o mesmo círculo em
- * versão contorno (papelão sem o preenchimento seco), pra par com o botão
- * principal sem competir com ele.
+ * abre o dialog) -- nunca os dois.
  */
 export function CardboardLiquidButton({
   to,
   onClick,
-  variant = "primary",
   ariaLabel,
   children,
 }: {
   to?: string;
   onClick?: () => void;
-  variant?: "primary" | "secondary";
   ariaLabel: string;
   children: ReactNode;
 }) {
@@ -191,9 +187,7 @@ export function CardboardLiquidButton({
     </span>
   );
 
-  const className = `cardboard-liquid-button relative mt-10 inline-flex shrink-0 ${
-    variant === "secondary" ? "cardboard-liquid-secondary" : ""
-  }`;
+  const className = "cardboard-liquid-button relative mt-10 inline-flex shrink-0";
 
   if (to) {
     return (

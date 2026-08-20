@@ -142,15 +142,11 @@ function Landing() {
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
             <div className="flex flex-wrap items-center gap-14">
+              <CardboardLiquidButton ariaLabel="Criar conta" onClick={() => setCreating(true)}>
+                Criar conta
+              </CardboardLiquidButton>
               <CardboardLiquidButton to="/auth" ariaLabel="Entrar na conta">
                 Entrar na conta
-              </CardboardLiquidButton>
-              <CardboardLiquidButton
-                variant="secondary"
-                ariaLabel="Criar conta"
-                onClick={() => setCreating(true)}
-              >
-                Criar conta
               </CardboardLiquidButton>
             </div>
           </div>
