@@ -37,6 +37,7 @@ const sourceLabel: Record<Movement["source"], string> = {
   document: "Documento",
   adjustment: "Ajuste",
   reversal: "Estorno",
+  receita: "Receita",
 };
 
 const kindLabel = (kind: Movement["kind"]) => (kind === "in" ? "entrada" : "saída");

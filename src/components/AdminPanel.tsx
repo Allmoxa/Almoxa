@@ -64,6 +64,7 @@ const sourceLabel: Record<Movement["source"], string> = {
   document: "Documento",
   adjustment: "Ajuste",
   reversal: "Estorno",
+  receita: "Receita",
 };
 
 /** Desenha uma vez, ao entrar — pathLength do framer-motion anima via stroke-dasharray/dashoffset por baixo dos panos. */

@@ -6,7 +6,12 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import { AppShell } from "@/components/AppShell";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Button } from "@/components/ui/button";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { DashboardFilterBar, PERIOD_LABELS } from "@/components/dashboard-filter-bar";
 import { DashboardAdvancedFilters } from "@/components/dashboard-advanced-filters";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
@@ -27,7 +32,10 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "Dashboard — Almoxá" },
-      { name: "description", content: "Visão geral do negócio: estoque baixo, mais vendidos, lucro e movimentação." },
+      {
+        name: "description",
+        content: "Visão geral do negócio: estoque baixo, mais vendidos, lucro e movimentação.",
+      },
     ],
   }),
   beforeLoad: requireOwner,
@@ -86,7 +94,9 @@ function DashboardPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, sku, quantity, purchase_price, sale_price, notes, created_at")
+        .select(
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+        )
         .order("name");
       if (error) throw error;
       return data as Product[];
@@ -116,7 +126,10 @@ function DashboardPage() {
   const isLoading = loadingProducts || loadingMovements;
   const hasError = productsError || movementsError;
   const hasAnyData = products.length > 0 || movements.length > 0;
-  const stats = useMemo(() => computeDashboardStats(products, movements, filters), [products, movements, filters]);
+  const stats = useMemo(
+    () => computeDashboardStats(products, movements, filters),
+    [products, movements, filters],
+  );
 
   const activeFilters = hasAnyActiveFilter(filters);
   const noResults = !isLoading && activeFilters && stats.filteredProductCount === 0;
@@ -129,7 +142,10 @@ function DashboardPage() {
   const periodLabel = PERIOD_LABELS[filters.period.preset];
 
   return (
-    <AppShell title="Dashboard" description="Visão geral do seu negócio: estoque, vendas e tendências.">
+    <AppShell
+      title="Dashboard"
+      description="Visão geral do seu negócio: estoque, vendas e tendências."
+    >
       <div className="theme-dashboard -mx-4 rounded-3xl bg-background px-5 py-8 sm:-mx-6 sm:px-8">
         <div aria-live="polite" className="sr-only">
           {!isLoading && !hasError
@@ -141,7 +157,9 @@ function DashboardPage() {
           <DashboardSkeleton />
         ) : hasError && !hasAnyData ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
-            <p className="text-sm text-muted-foreground">Não foi possível carregar o dashboard agora.</p>
+            <p className="text-sm text-muted-foreground">
+              Não foi possível carregar o dashboard agora.
+            </p>
             <Button type="button" variant="outline" onClick={retry}>
               Tentar novamente
             </Button>
@@ -150,7 +168,9 @@ function DashboardPage() {
           <div className="space-y-8">
             {hasError ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
-                <span>Não foi possível atualizar os dados agora. Mostrando o último resultado válido.</span>
+                <span>
+                  Não foi possível atualizar os dados agora. Mostrando o último resultado válido.
+                </span>
                 <Button type="button" variant="outline" size="sm" onClick={retry}>
                   Tentar novamente
                 </Button>
@@ -168,7 +188,9 @@ function DashboardPage() {
 
             {noResults ? (
               <div className="paper-panel flex flex-col items-center gap-3 py-16 text-center">
-                <p className="text-sm text-muted-foreground">Nenhum resultado encontrado com estes filtros.</p>
+                <p className="text-sm text-muted-foreground">
+                  Nenhum resultado encontrado com estes filtros.
+                </p>
                 <Button type="button" variant="outline" onClick={() => setFilters(DEFAULT_FILTERS)}>
                   Limpar filtros
                 </Button>
@@ -176,8 +198,18 @@ function DashboardPage() {
             ) : (
               <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <StatCard delay={0} label="Investido em estoque" value={stats.totalInvested} format={currency} />
-                  <StatCard delay={80} label="Ticket médio de saída" value={stats.avgTicket} format={currency} />
+                  <StatCard
+                    delay={0}
+                    label="Investido em estoque"
+                    value={stats.totalInvested}
+                    format={currency}
+                  />
+                  <StatCard
+                    delay={80}
+                    label="Ticket médio de saída"
+                    value={stats.avgTicket}
+                    format={currency}
+                  />
                   <StatCard
                     delay={160}
                     label="Produtos com estoque baixo"
@@ -199,7 +231,11 @@ function DashboardPage() {
                 </ChartCard>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <ChartCard delay={400} title="Mais vendidos" subtitle="Unidades saídas do estoque">
+                  <ChartCard
+                    delay={400}
+                    title="Mais vendidos"
+                    subtitle="Unidades saídas do estoque"
+                  >
                     <RankingChart
                       data={stats.topSellers}
                       dataKey="qty"
@@ -209,7 +245,11 @@ function DashboardPage() {
                     />
                   </ChartCard>
 
-                  <ChartCard delay={480} title="Lucro por produto" subtitle="Realizado nas vendas registradas">
+                  <ChartCard
+                    delay={480}
+                    title="Lucro por produto"
+                    subtitle="Realizado nas vendas registradas"
+                  >
                     <RankingChart
                       data={stats.topProfit}
                       dataKey="profit"
@@ -221,11 +261,18 @@ function DashboardPage() {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <ListCard id="lista-estoque-baixo" delay={560} title="Estoque baixo" empty="Nenhum produto abaixo do mínimo.">
+                  <ListCard
+                    id="lista-estoque-baixo"
+                    delay={560}
+                    title="Estoque baixo"
+                    empty="Nenhum produto abaixo do mínimo."
+                  >
                     {stats.lowStock.map((p, i) => (
                       <ListRow key={p.id} delay={i * 60}>
                         <span className="truncate">{p.name}</span>
-                        <span className="font-mono text-xs text-destructive">{qty(p.quantity)} un.</span>
+                        <span className="font-mono text-xs text-destructive">
+                          {qty(p.quantity)} un.
+                        </span>
                       </ListRow>
                     ))}
                   </ListCard>
@@ -359,7 +406,11 @@ function ListCard({
     >
       <h3 className="font-display text-lg">{title}</h3>
       <div className="mt-4 divide-y divide-border">
-        {children.length === 0 ? <p className="py-6 text-sm text-muted-foreground">{empty}</p> : children}
+        {children.length === 0 ? (
+          <p className="py-6 text-sm text-muted-foreground">{empty}</p>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
@@ -396,7 +447,13 @@ function FlowChart({
     <ChartContainer config={config} className="aspect-auto h-64 w-full">
       <LineChart data={data} margin={{ left: 4, right: 4 }}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} interval="preserveStartEnd" />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          interval="preserveStartEnd"
+        />
         <YAxis tickLine={false} axisLine={false} fontSize={11} width={30} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Line
@@ -435,18 +492,35 @@ function RankingChart({
   color: string;
   reducedMotion: boolean;
 }) {
-  const config: ChartConfig = { [dataKey]: { label: dataKey === "qty" ? "Unidades" : "Lucro", color } };
+  const config: ChartConfig = {
+    [dataKey]: { label: dataKey === "qty" ? "Unidades" : "Lucro", color },
+  };
 
   if (data.length === 0) {
-    return <p className="py-10 text-center text-sm text-muted-foreground">Sem movimentações ainda.</p>;
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">Sem movimentações ainda.</p>
+    );
   }
 
   return (
     <ChartContainer config={config} className="aspect-auto h-64 w-full">
       <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
         <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-        <XAxis type="number" tickLine={false} axisLine={false} fontSize={11} tickFormatter={valueFormat} />
-        <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} fontSize={11} width={110} />
+        <XAxis
+          type="number"
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          tickFormatter={valueFormat}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tickLine={false}
+          axisLine={false}
+          fontSize={11}
+          width={110}
+        />
         <ChartTooltip content={<ChartTooltipContent formatter={(v) => valueFormat(Number(v))} />} />
         <Bar
           dataKey={dataKey}

@@ -87,6 +87,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_ingredient: boolean
           name: string
           notes: string | null
           purchase_price: number
@@ -99,6 +100,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_ingredient?: boolean
           name: string
           notes?: string | null
           purchase_price?: number
@@ -111,6 +113,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_ingredient?: boolean
           name?: string
           notes?: string | null
           purchase_price?: number
@@ -121,6 +124,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient_id: string
+          product_id: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient_id: string
+          product_id: string
+          quantity: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+          product_id?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

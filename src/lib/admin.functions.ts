@@ -227,7 +227,9 @@ export const getUserDetail = createServerFn({ method: "GET" })
     const [products, movements] = await Promise.all([
       supabaseAdmin
         .from("products")
-        .select("id, name, sku, quantity, purchase_price, sale_price, notes, created_at")
+        .select(
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+        )
         .eq("user_id", data.userId)
         .order("name"),
       supabaseAdmin

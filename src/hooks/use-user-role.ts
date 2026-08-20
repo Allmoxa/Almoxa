@@ -13,6 +13,8 @@ export const roleLabel: Record<AppRole, string> = {
 /** Do mais poderoso para o menos: quem acumula papéis responde pelo maior. */
 const ROLE_RANK: AppRole[] = ["onisciente", "admin", "comissionado"];
 
+export type BusinessType = "varejo" | "comida";
+
 export type UserRole = {
   role: AppRole | undefined;
   /** De quem é o estoque que esta pessoa movimenta — o dono, se for comissionado. */
@@ -22,6 +24,12 @@ export type UserRole = {
   isAdmin: boolean;
   isComissionado: boolean;
   isLoading: boolean;
+  /**
+   * Metadata da própria conta logada (auth.users.raw_user_meta_data), não da
+   * loja adentrada — um onisciente dentro da loja de um cliente "comida" não
+   * herda o tipo de negócio dele por aqui.
+   */
+  businessType: BusinessType | null;
 };
 
 /**
@@ -45,10 +53,15 @@ export function useUserRole(): UserRole {
 
       const role = ROLE_RANK.find((candidate) => data.some((row) => row.role === candidate));
       const comissionado = data.find((row) => row.role === "comissionado");
+      const businessType = userData.user?.user_metadata?.["business_type"];
       return {
         role: role ?? ("admin" as AppRole),
         storeOwnerId: comissionado?.store_owner_id ?? null,
         userId,
+        businessType:
+          businessType === "varejo" || businessType === "comida"
+            ? (businessType as BusinessType)
+            : null,
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -62,5 +75,6 @@ export function useUserRole(): UserRole {
     isAdmin: query.data?.role === "onisciente" || query.data?.role === "admin",
     isComissionado: query.data?.role === "comissionado",
     isLoading: query.isLoading,
+    businessType: query.data?.businessType ?? null,
   };
 }

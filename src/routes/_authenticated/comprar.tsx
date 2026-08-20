@@ -72,7 +72,10 @@ function ComprarPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, sku, quantity, purchase_price, sale_price, notes, created_at")
+        .select(
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+        )
+        .eq("is_ingredient", false)
         .order("name");
       if (error) throw error;
       return data as Product[];

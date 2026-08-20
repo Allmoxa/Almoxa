@@ -35,9 +35,12 @@ export type Product = {
   sale_price: number;
   notes: string | null;
   created_at: string;
+  /** Ingrediente cru de uma receita — não aparece na grade normal, não se vende direto. */
+  is_ingredient: boolean;
 };
 
-export type MovementSource = "manual" | "photo" | "document" | "adjustment" | "reversal";
+export type MovementSource =
+  "manual" | "photo" | "document" | "adjustment" | "reversal" | "receita";
 
 export type Movement = {
   id: string;
@@ -70,8 +73,8 @@ export type Sale = Pick<
   "product_id" | "quantity" | "unit_price" | "unit_cost" | "created_at"
 >;
 
-/** Origens que movem estoque sem ser compra ou venda: correção e desfazimento. */
-export const NON_SALE_SOURCES = ["adjustment", "reversal"] as const;
+/** Origens que movem estoque sem ser compra ou venda: correção, desfazimento e receita. */
+export const NON_SALE_SOURCES = ["adjustment", "reversal", "receita"] as const;
 
 /**
  * O mesmo filtro em sintaxe PostgREST, para as telas que já descartam o que não

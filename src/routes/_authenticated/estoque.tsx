@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { ProductEditDialog, type ProductEditValues } from "@/components/product-edit-dialog";
 import { ProductMovementDialog, type MovementValues } from "@/components/product-movement-dialog";
 import { ProductProfitDialog } from "@/components/product-profit-dialog";
+import { RecipeDialog } from "@/components/recipe-dialog";
 import { StoreStockView } from "@/components/store-stock-view";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PaginationNav } from "@/components/ui/pagination-nav";
@@ -69,19 +70,24 @@ function EstoquePage() {
 function EstoqueDono() {
   const queryClient = useQueryClient();
   const { storeOwnerId } = useStoreContext();
+  const { businessType } = useUserRole();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [moving, setMoving] = useState<{ product: Product; kind: "in" | "out" } | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [profiting, setProfiting] = useState<Product | null>(null);
+  const [recipeFor, setRecipeFor] = useState<Product | null>(null);
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id, name, sku, quantity, purchase_price, sale_price, notes, created_at")
+        .select(
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+        )
+        .eq("is_ingredient", false)
         .order("name");
       if (error) throw error;
       return data as Product[];
@@ -508,6 +514,14 @@ function EstoqueDono() {
                         >
                           Editar
                         </button>
+                        {businessType === "comida" ? (
+                          <button
+                            onClick={() => setRecipeFor(product)}
+                            className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                          >
+                            Receita
+                          </button>
+                        ) : null}
                         <button
                           onClick={() => {
                             if (confirm(`Remover ${product.name}?`))
@@ -560,6 +574,14 @@ function EstoqueDono() {
           product={profiting}
           summary={profitPerProduct.get(profiting.id) ?? noProfit()}
           onClose={() => setProfiting(null)}
+        />
+      ) : null}
+
+      {recipeFor ? (
+        <RecipeDialog
+          product={recipeFor}
+          storeOwnerId={storeOwnerId}
+          onClose={() => setRecipeFor(null)}
         />
       ) : null}
     </AppShell>
