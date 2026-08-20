@@ -2,17 +2,19 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, type ReactNode } from "react";
 import { springStep, type Vec2 } from "@/lib/spring";
 
-const MAX_OFFSET_PX = 6;
-const PULL_STRENGTH = 0.25;
+const ZONE_PADDING = 70;
+const MAX_OFFSET_PX = 12;
+const PULL_STRENGTH = 0.4;
 const SETTLE_EPSILON = 0.03;
 
 /**
  * Botão circular "papelão seco absorvendo líquido" -- o preenchimento e o
  * texto creme recortado vivem inteiramente em CSS (ver .cardboard-liquid-*
  * em styles.css, disparado por :hover/:focus-visible/:active). Só o
- * magnetismo (puxão de até 6px em direção ao cursor) precisa de JS, e segue
- * o mesmo spring amortecido do MagneticLink -- só que num único elemento,
- * já que aqui não tem texto se movendo por dentro do botão.
+ * magnetismo (puxão de até 12px em direção ao cursor, começando ~70px antes
+ * de tocar o botão) precisa de JS, e segue o mesmo spring amortecido do
+ * MagneticNavItem -- só que num único elemento, já que aqui não tem texto se
+ * movendo por dentro do botão.
  */
 export function CardboardLiquidButton({ to, children }: { to: string; children: ReactNode }) {
   const linkRef = useRef<HTMLAnchorElement | null>(null);
@@ -26,7 +28,7 @@ export function CardboardLiquidButton({ to, children }: { to: string; children: 
     if (prefersReducedMotion || isTouchDevice) return;
 
     let frame: number | null = null;
-    let hovering = false;
+    let inZone = false;
     const target: Vec2 = { x: 0, y: 0 };
     const pos: Vec2 = { x: 0, y: 0 };
     const vel: Vec2 = { x: 0, y: 0 };
@@ -44,7 +46,7 @@ export function CardboardLiquidButton({ to, children }: { to: string; children: 
       link.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0)`;
 
       const settled =
-        !hovering &&
+        !inZone &&
         Math.abs(vel.x) < SETTLE_EPSILON &&
         Math.abs(vel.y) < SETTLE_EPSILON &&
         Math.abs(pos.x) < SETTLE_EPSILON &&
@@ -64,33 +66,40 @@ export function CardboardLiquidButton({ to, children }: { to: string; children: 
       if (frame == null) frame = requestAnimationFrame(tick);
     };
 
+    // Ouve na window, não no próprio link: o ímã precisa puxar antes do
+    // cursor tocar o botão, então a zona de atração se estende ZONE_PADDING
+    // além do retângulo real (mesmo padrão do MagneticNavItem).
     const onMouseMove = (event: MouseEvent) => {
       const rect = link.getBoundingClientRect();
-      target.x = clamp(
-        (event.clientX - (rect.left + rect.width / 2)) * PULL_STRENGTH,
-        MAX_OFFSET_PX,
-      );
-      target.y = clamp(
-        (event.clientY - (rect.top + rect.height / 2)) * PULL_STRENGTH,
-        MAX_OFFSET_PX,
-      );
-      hovering = true;
-      startLoop();
+      const withinZone =
+        event.clientX >= rect.left - ZONE_PADDING &&
+        event.clientX <= rect.right + ZONE_PADDING &&
+        event.clientY >= rect.top - ZONE_PADDING &&
+        event.clientY <= rect.bottom + ZONE_PADDING;
+
+      if (withinZone) {
+        inZone = true;
+        target.x = clamp(
+          (event.clientX - (rect.left + rect.width / 2)) * PULL_STRENGTH,
+          MAX_OFFSET_PX,
+        );
+        target.y = clamp(
+          (event.clientY - (rect.top + rect.height / 2)) * PULL_STRENGTH,
+          MAX_OFFSET_PX,
+        );
+        startLoop();
+      } else if (inZone) {
+        inZone = false;
+        target.x = 0;
+        target.y = 0;
+        startLoop();
+      }
     };
 
-    const onMouseLeave = () => {
-      hovering = false;
-      target.x = 0;
-      target.y = 0;
-      startLoop();
-    };
-
-    link.addEventListener("mousemove", onMouseMove);
-    link.addEventListener("mouseleave", onMouseLeave);
+    window.addEventListener("mousemove", onMouseMove);
 
     return () => {
-      link.removeEventListener("mousemove", onMouseMove);
-      link.removeEventListener("mouseleave", onMouseLeave);
+      window.removeEventListener("mousemove", onMouseMove);
       if (frame != null) cancelAnimationFrame(frame);
     };
   }, []);

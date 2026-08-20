@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { springStep, type Vec2 } from "@/lib/spring";
 
-const ZONE_PADDING = 60;
-const MAX_OFFSET_X = 6;
-const MAX_OFFSET_Y = 4;
-const PULL_STRENGTH = 0.22;
+const ZONE_PADDING = 70;
+const MAX_OFFSET_X = 10;
+const MAX_OFFSET_Y = 7;
+const PULL_STRENGTH = 0.32;
 const SETTLE_EPSILON = 0.03;
 
 type Shape = "circle" | "underline" | "brackets";
@@ -40,10 +40,12 @@ type MagneticNavItemProps = {
   /** "Início": indicador da página atual -- contorno sempre completo, sem desenhar/apagar. */
   alwaysDrawn?: boolean;
   labelClassName?: string;
-  /** Rota interna (TanStack Router) -- use isto OU href, nunca os dois. */
+  /** Rota interna (TanStack Router) -- use isto OU href OU onClick. */
   to?: string;
   /** Âncora na mesma página. */
   href?: string;
+  /** Vira um <button> em vez de link -- pra abrir modal, por exemplo. */
+  onClick?: () => void;
 };
 
 /**
@@ -61,8 +63,15 @@ export function MagneticNavItem({
   labelClassName = "",
   to,
   href,
+  onClick,
 }: MagneticNavItemProps) {
-  const linkRef = useRef<HTMLAnchorElement | null>(null);
+  // HTMLElement, não HTMLAnchorElement: precisa caber tanto <a>/Link quanto
+  // <button> (modo onClick), e o JS abaixo só usa getBoundingClientRect/style,
+  // que os dois têm.
+  const linkRef = useRef<HTMLElement | null>(null);
+  const setLinkRef = (el: HTMLElement | null) => {
+    linkRef.current = el;
+  };
   const pathRef = useRef<SVGPathElement | null>(null);
   const [drawn, setDrawn] = useState(alwaysDrawn);
   const [pressed, setPressed] = useState(false);
@@ -198,14 +207,22 @@ export function MagneticNavItem({
 
   if (to) {
     return (
-      <Link ref={linkRef} to={to} {...sharedProps}>
+      <Link ref={setLinkRef} to={to} {...sharedProps}>
         {inner}
       </Link>
     );
   }
 
+  if (onClick) {
+    return (
+      <button ref={setLinkRef} type="button" onClick={onClick} {...sharedProps}>
+        {inner}
+      </button>
+    );
+  }
+
   return (
-    <a ref={linkRef} href={href ?? "#"} {...sharedProps}>
+    <a ref={setLinkRef} href={href ?? "#"} {...sharedProps}>
       {inner}
     </a>
   );
