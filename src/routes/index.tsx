@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StepsCube } from "@/components/steps-cube";
 import { SmoothScroll } from "@/components/smooth-scroll";
@@ -10,7 +10,6 @@ import { ContactForm } from "@/components/contact-form";
 import { ScrollFade } from "@/components/scroll-fade";
 import { LogoRefreshButton } from "@/components/logo-refresh-button";
 import { CardboardLiquidButton } from "@/components/cardboard-liquid-button";
-import { CreateAccountDialog } from "@/components/create-account-dialog";
 import { MagneticNavItem } from "@/components/magnetic-nav-item";
 import { SiteGate } from "@/components/site-gate";
 import { SketchDivider } from "@/components/sketch";
@@ -67,7 +66,6 @@ function Landing() {
     boxRef: heroBoxRef,
   } = useHeroParallax();
   const { footerRef, lineRef: footerLineRef } = useFooterLineReveal();
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -112,9 +110,9 @@ function Landing() {
 
         <div className="flex items-center gap-10">
           <MagneticNavItem
+            to="/criar-conta"
             shape="brackets"
             labelClassName="text-lg font-semibold"
-            onClick={() => setCreating(true)}
           >
             Criar conta
           </MagneticNavItem>
@@ -142,7 +140,7 @@ function Landing() {
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
             <div className="flex flex-wrap items-center gap-14">
-              <CardboardLiquidButton ariaLabel="Criar conta" onClick={() => setCreating(true)}>
+              <CardboardLiquidButton to="/criar-conta" ariaLabel="Criar conta">
                 Criar conta
               </CardboardLiquidButton>
               <CardboardLiquidButton to="/auth" ariaLabel="Entrar na conta">
@@ -174,8 +172,6 @@ function Landing() {
           Almoxá — controle de estoque simples para quem compra e revende.
         </footer>
       </main>
-
-      <CreateAccountDialog open={creating} onOpenChange={setCreating} />
     </div>
   );
 }

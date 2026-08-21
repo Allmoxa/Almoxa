@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PasswordInput } from "@/components/ui/password-input";
-import { CreateAccountDialog } from "@/components/create-account-dialog";
 import { ForgotPasswordDialog } from "@/components/forgot-password-dialog";
 import { LoginStickers } from "@/components/login-stickers";
 import { LogoBracket } from "@/components/logo-bracket";
@@ -43,7 +42,6 @@ type FormValues = z.infer<typeof schema>;
 function AuthPage() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [creating, setCreating] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
@@ -195,18 +193,16 @@ function AuthPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Ainda não tem conta?{" "}
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
+            <Link
+              to="/criar-conta"
               className="font-medium text-foreground underline-offset-2 hover:underline"
             >
               Criar conta
-            </button>
+            </Link>
           </p>
         </div>
       </div>
 
-      <CreateAccountDialog open={creating} onOpenChange={setCreating} />
       <ForgotPasswordDialog open={recovering} onOpenChange={setRecovering} />
     </div>
   );
