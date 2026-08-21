@@ -132,14 +132,18 @@ function Landing() {
         >
           <div ref={heroTextGroupRef} style={{ willChange: "transform" }}>
             <p className="label-caps">Controle de entrada e saída</p>
-            <h1 className="mt-6 max-w-2xl text-6xl leading-[1.02] sm:text-7xl">
+            <h1 className="mt-6 max-w-2xl text-4xl leading-[1.05] sm:text-6xl sm:leading-[1.02] lg:text-7xl">
               Seu estoque atualizado com uma foto.
             </h1>
             <p className="mt-6 max-w-xl text-base text-muted-foreground">
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            <div className="flex flex-wrap items-center gap-14">
+            {/* No celular os dois círculos empilham, alinhados à esquerda igual ao
+                resto do texto -- lado a lado eles disputavam espaço com pouca
+                margem de erro pro toque. Do sm: pra cima (mais largura sobrando),
+                voltam a ficar em linha, centralizados um com o outro. */}
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-14">
               <CardboardLiquidButton to="/criar-conta" ariaLabel="Criar conta">
                 Criar conta
               </CardboardLiquidButton>
