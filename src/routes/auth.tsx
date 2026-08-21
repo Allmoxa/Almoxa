@@ -1,13 +1,17 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { CreateAccountDialog } from "@/components/create-account-dialog";
+import { ForgotPasswordDialog } from "@/components/forgot-password-dialog";
 import { LoginStickers } from "@/components/login-stickers";
 import { LogoBracket } from "@/components/logo-bracket";
 import { supabase } from "@/integrations/supabase/client";
+import { computeLockoutUntil, emailSchema, loginPasswordSchema } from "@/lib/auth-validation";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -30,30 +34,26 @@ export const Route = createFileRoute("/auth")({
 });
 
 const schema = z.object({
-  email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-  // Só "não vazio" -- login não é hora de policiar força de senha (isso é
-  // coisa de cadastro/troca de senha), e apertar o mínimo aqui bloquearia
-  // login de conta antiga que nasceu com senha mais curta.
-  password: z.string().min(1, { message: "Informe a senha" }).max(72),
+  email: emailSchema,
+  password: loginPasswordSchema,
 });
 
-// Freio progressivo contra tentativa repetida direto do navegador: cada
-// login que falha soma 1, e a partir da 5ª tentativa a próxima só libera
-// depois de um intervalo que dobra (5s, 10s, 20s...). Não substitui o rate
-// limit do próprio projeto Supabase (Authentication > Rate Limits) -- é só
-// mais uma barreira, do lado de cá, contra um script batendo local sem parar.
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_BASE_MS = 5000;
+type FormValues = z.infer<typeof schema>;
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [recovering, setRecovering] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -73,20 +73,14 @@ function AuthPage() {
     lockedUntil != null && now < lockedUntil ? Math.ceil((lockedUntil - now) / 1000) : 0;
   const isLocked = lockedSecondsLeft > 0;
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const submit = handleSubmit(async (data) => {
     if (isLocked) {
       toast.error(`Muitas tentativas. Espera ${lockedSecondsLeft}s e tenta de novo.`);
       return;
     }
-    const parsed = schema.safeParse({ email, password });
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
-      return;
-    }
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword(parsed.data);
+      const { error } = await supabase.auth.signInWithPassword(data);
       if (error) throw error;
       setFailedAttempts(0);
       setLockedUntil(null);
@@ -94,15 +88,12 @@ function AuthPage() {
     } catch (error) {
       const next = failedAttempts + 1;
       setFailedAttempts(next);
-      if (next >= LOCKOUT_THRESHOLD) {
-        const backoff = LOCKOUT_BASE_MS * 2 ** (next - LOCKOUT_THRESHOLD);
-        setLockedUntil(Date.now() + backoff);
-      }
+      setLockedUntil(computeLockoutUntil(next, Date.now()));
       toast.error(error instanceof Error ? error.message : "Não foi possível continuar");
     } finally {
       setBusy(false);
     }
-  };
+  });
 
   const google = async () => {
     setBusy(true);
@@ -131,7 +122,7 @@ function AuthPage() {
           <p className="label-caps">Acesso</p>
           <h1 className="mt-3 text-4xl">Entre no seu estoque</h1>
 
-          <form onSubmit={submit} className="mt-8 space-y-4">
+          <form onSubmit={submit} noValidate className="mt-8 space-y-4">
             <div>
               <label htmlFor="email" className="label-caps">
                 E-mail
@@ -140,26 +131,47 @@ function AuthPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? "email-error" : undefined}
                 className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring"
+                {...register("email")}
               />
+              {errors.email ? (
+                <p id="email-error" role="alert" className="mt-1.5 text-xs text-destructive">
+                  {errors.email.message}
+                </p>
+              ) : null}
             </div>
             <div>
-              <label htmlFor="password" className="label-caps">
-                Senha
-              </label>
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="password" className="label-caps">
+                  Senha
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setRecovering(true)}
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
               <PasswordInput
                 id="password"
                 autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? "password-error" : undefined}
                 className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring"
+                {...register("password")}
               />
+              {errors.password ? (
+                <p id="password-error" role="alert" className="mt-1.5 text-xs text-destructive">
+                  {errors.password.message}
+                </p>
+              ) : null}
             </div>
             <button
               type="submit"
-              disabled={busy || isLocked}
+              disabled={busy || isSubmitting || isLocked}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               {busy ? <BoxSpinner size={16} /> : null}
@@ -195,6 +207,7 @@ function AuthPage() {
       </div>
 
       <CreateAccountDialog open={creating} onOpenChange={setCreating} />
+      <ForgotPasswordDialog open={recovering} onOpenChange={setRecovering} />
     </div>
   );
 }

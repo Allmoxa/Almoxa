@@ -1,35 +1,16 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { X } from "lucide-react";
 import { useId, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { PasswordInput } from "@/components/ui/password-input";
 import { supabase } from "@/integrations/supabase/client";
-
-const schema = z
-  .object({
-    email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-    // 8 e não 6: acompanha o mínimo que o próprio projeto Supabase exige (ver
-    // Authentication > Settings) -- abaixo disso o signUp falha no servidor
-    // mesmo passando na validação local. Sem exigir símbolo/maiúscula: NIST
-    // 800-63B recomenda comprimento sobre complexidade forçada.
-    password: z.string().min(8, { message: "A senha precisa de ao menos 8 caracteres" }).max(72),
-    confirm: z.string(),
-    // Campo isca: só bot preenche (fica fora da tela, sem label, sem
-    // autocomplete que bata com nenhuma categoria conhecida). Humano de
-    // verdade nunca manda valor aqui.
-    hpField: z.string().max(0, { message: "Falha na validação" }).optional(),
-  })
-  .refine((data) => data.password === data.confirm, {
-    message: "As senhas não coincidem",
-    path: ["confirm"],
-  });
-
-const inputClass =
-  "w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring";
+import { emailSchema, newPasswordSchema } from "@/lib/auth-validation";
 
 const BUSINESS_TYPES = [
   { key: "varejo", label: "Varejo", hint: "Revende de tudo um pouco." },
@@ -37,6 +18,31 @@ const BUSINESS_TYPES = [
 ] as const;
 
 type BusinessType = (typeof BUSINESS_TYPES)[number]["key"];
+
+const schema = z
+  .object({
+    email: emailSchema,
+    password: newPasswordSchema,
+    confirm: z.string(),
+    businessType: z.enum(["varejo", "comida"], {
+      invalid_type_error: "Escolha o tipo do seu negócio",
+    }),
+    // Campo isca: só bot preenche (fica fora da tela, sem label, sem
+    // autocomplete que bata com nenhuma categoria conhecida). Sem restrição
+    // de tamanho aqui de propósito -- se travasse no schema, o envio
+    // devolveria erro de validação visível, o que já entrega pro bot que ele
+    // foi barrado. O corte silencioso acontece depois, no submit.
+    hpField: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirm, {
+    message: "As senhas não coincidem",
+    path: ["confirm"],
+  });
+
+type FormValues = z.infer<typeof schema>;
+
+const inputClass =
+  "w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring";
 
 export function CreateAccountDialog({
   open,
@@ -49,77 +55,61 @@ export function CreateAccountDialog({
   const navigate = useNavigate();
   const titleId = useId();
   const descId = useId();
-
-  const [businessType, setBusinessType] = useState<BusinessType | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [hpField, setHpField] = useState("");
-  const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
 
-  const reset = () => {
-    setBusinessType(null);
-    setEmail("");
-    setPassword("");
-    setConfirm("");
-    setHpField("");
-    setSentTo(null);
-  };
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!businessType) {
-      toast.error("Escolha o tipo do seu negócio");
-      return;
-    }
-    const parsed = schema.safeParse({ email, password, confirm, hpField });
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
-      return;
-    }
+  const businessType = watch("businessType") as BusinessType | undefined;
 
-    // Bot preencheu o campo isca: finge sucesso sem chamar o Supabase, pra não
-    // dar sinal nenhum de que foi barrado.
-    if (hpField) {
-      setSentTo(parsed.data.email);
+  const submit = handleSubmit(async (data) => {
+    // Bot preencheu o campo isca: finge sucesso sem chamar o Supabase, pra
+    // não dar sinal nenhum de que foi barrado.
+    if (data.hpField) {
+      setSentTo(data.email);
       return;
     }
 
-    setBusy(true);
     try {
       // business_type vai no metadata do Supabase (auth.users.raw_user_meta_data)
       // -- é só uma preferência de onboarding por enquanto, não controla
       // permissão nenhuma, então não precisa de coluna/migration própria.
-      const { data, error } = await supabase.auth.signUp({
-        email: parsed.data.email,
-        password: parsed.data.password,
-        options: { data: { business_type: businessType } },
+      const { data: result, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: { data: { business_type: data.businessType } },
       });
       if (error) throw error;
 
       // Com confirmação de e-mail ligada no projeto, signUp não devolve sessão
       // -- a conta existe, mas só entra depois de clicar no link recebido.
-      if (data.session) {
+      if (result.session) {
         onOpenChange(false);
         reset();
         navigate({ to: "/estoque" });
       } else {
-        setSentTo(parsed.data.email);
+        setSentTo(data.email);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível criar a conta");
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   return (
     <DialogPrimitive.Root
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next);
-        if (!next) reset();
+        if (!next) {
+          reset();
+          setSentTo(null);
+        }
       }}
     >
       <AnimatePresence>
@@ -191,27 +181,34 @@ export function CreateAccountDialog({
                       </button>
                     </div>
                   ) : (
-                    <form onSubmit={submit} className="mt-6 space-y-4">
+                    <form onSubmit={submit} noValidate className="mt-6 space-y-4">
                       {/* Isca anti-bot: invisível e fora da ordem de tab para quem usa
                           teclado/leitor de tela; sem name/autocomplete reconhecível, então
                           preenchimento automático do navegador nunca cai aqui. */}
                       <input
                         type="text"
-                        value={hpField}
-                        onChange={(e) => setHpField(e.target.value)}
                         tabIndex={-1}
                         autoComplete="off"
                         aria-hidden="true"
                         className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden"
+                        {...register("hpField")}
                       />
                       <div>
-                        <p className="label-caps">Tipo do seu negócio</p>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
+                        <p className="label-caps" id="business-type-label">
+                          Tipo do seu negócio
+                        </p>
+                        <div
+                          className="mt-2 grid grid-cols-2 gap-2"
+                          role="group"
+                          aria-labelledby="business-type-label"
+                        >
                           {BUSINESS_TYPES.map((type) => (
                             <button
                               key={type.key}
                               type="button"
-                              onClick={() => setBusinessType(type.key)}
+                              onClick={() =>
+                                setValue("businessType", type.key, { shouldValidate: true })
+                              }
                               aria-pressed={businessType === type.key}
                               className={`rounded-md border px-2.5 py-2.5 text-left transition-colors ${
                                 businessType === type.key
@@ -226,6 +223,11 @@ export function CreateAccountDialog({
                             </button>
                           ))}
                         </div>
+                        {errors.businessType ? (
+                          <p role="alert" className="mt-1.5 text-xs text-destructive">
+                            {errors.businessType.message}
+                          </p>
+                        ) : null}
                       </div>
                       <div>
                         <label htmlFor="create-email" className="label-caps">
@@ -235,10 +237,20 @@ export function CreateAccountDialog({
                           id="create-email"
                           type="email"
                           autoComplete="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          aria-invalid={!!errors.email}
+                          aria-describedby={errors.email ? "create-email-error" : undefined}
                           className={`mt-2 ${inputClass}`}
+                          {...register("email")}
                         />
+                        {errors.email ? (
+                          <p
+                            id="create-email-error"
+                            role="alert"
+                            className="mt-1.5 text-xs text-destructive"
+                          >
+                            {errors.email.message}
+                          </p>
+                        ) : null}
                       </div>
                       <div>
                         <label htmlFor="create-password" className="label-caps">
@@ -247,10 +259,29 @@ export function CreateAccountDialog({
                         <PasswordInput
                           id="create-password"
                           autoComplete="new-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          aria-invalid={!!errors.password}
+                          aria-describedby={
+                            errors.password ? "create-password-error" : "create-password-hint"
+                          }
                           className={`mt-2 ${inputClass}`}
+                          {...register("password")}
                         />
+                        {errors.password ? (
+                          <p
+                            id="create-password-error"
+                            role="alert"
+                            className="mt-1.5 text-xs text-destructive"
+                          >
+                            {errors.password.message}
+                          </p>
+                        ) : (
+                          <p
+                            id="create-password-hint"
+                            className="mt-1.5 text-xs text-muted-foreground"
+                          >
+                            Pelo menos 12 caracteres. Sem exigência de símbolo ou maiúscula.
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label htmlFor="create-confirm" className="label-caps">
@@ -259,18 +290,28 @@ export function CreateAccountDialog({
                         <PasswordInput
                           id="create-confirm"
                           autoComplete="new-password"
-                          value={confirm}
-                          onChange={(e) => setConfirm(e.target.value)}
+                          aria-invalid={!!errors.confirm}
+                          aria-describedby={errors.confirm ? "create-confirm-error" : undefined}
                           className={`mt-2 ${inputClass}`}
+                          {...register("confirm")}
                         />
+                        {errors.confirm ? (
+                          <p
+                            id="create-confirm-error"
+                            role="alert"
+                            className="mt-1.5 text-xs text-destructive"
+                          >
+                            {errors.confirm.message}
+                          </p>
+                        ) : null}
                       </div>
                       <button
                         type="submit"
-                        disabled={busy}
+                        disabled={isSubmitting}
                         className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
-                        {busy ? <BoxSpinner size={16} /> : null}
-                        {busy ? "Criando…" : "Criar conta"}
+                        {isSubmitting ? <BoxSpinner size={16} /> : null}
+                        {isSubmitting ? "Criando…" : "Criar conta"}
                       </button>
                     </form>
                   )}
