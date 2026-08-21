@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { AppRole } from "@/hooks/use-user-role";
+import { emailSchema, newPasswordSchema } from "@/lib/auth-validation";
 import type { Movement, Product } from "@/lib/inventory";
 
 export type AdminUser = {
@@ -28,8 +29,8 @@ export type AdminUserDetail = {
 
 const createUserSchema = z
   .object({
-    email: z.string().trim().email({ message: "E-mail inválido" }).max(255),
-    password: z.string().min(6, { message: "A senha precisa de ao menos 6 caracteres" }).max(72),
+    email: emailSchema,
+    password: newPasswordSchema,
     role: z.enum(["onisciente", "admin", "comissionado"]),
     storeOwnerId: z.string().uuid().nullable().default(null),
   })

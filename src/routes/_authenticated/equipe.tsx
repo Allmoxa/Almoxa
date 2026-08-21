@@ -8,6 +8,7 @@ import { useStoreContext } from "@/hooks/use-store-context";
 import { requireOwner } from "@/lib/guards";
 import { createUser } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { emailSchema, newPasswordSchema } from "@/lib/auth-validation";
 import { currency, qty } from "@/lib/inventory";
 
 export const Route = createFileRoute("/_authenticated/equipe")({
@@ -55,7 +56,12 @@ const inputClass =
   "w-24 rounded-md border border-input bg-card px-2.5 py-1.5 text-right text-sm tabular-nums outline-none transition-colors focus:border-ring";
 
 const num = (value: string) => {
-  const parsed = Number(value.replace(",", "."));
+  const trimmed = value.trim();
+  // Campo vazio precisa contar como inválido, não como zero -- Number("")
+  // é 0 em JS, e sem esse corte um campo apagado por engano salvaria a
+  // comissão como 0% em silêncio em vez de pedir pra tentar de novo.
+  if (trimmed === "") return NaN;
+  const parsed = Number(trimmed.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : NaN;
 };
 
@@ -160,17 +166,17 @@ function EquipePage() {
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
-            const email = String(form.get("email") ?? "").trim();
-            const password = String(form.get("password") ?? "");
-            if (!email.includes("@")) {
-              toast.error("E-mail inválido");
+            const parsedEmail = emailSchema.safeParse(form.get("email"));
+            if (!parsedEmail.success) {
+              toast.error(parsedEmail.error.issues[0]?.message ?? "E-mail inválido");
               return;
             }
-            if (password.length < 6) {
-              toast.error("A senha precisa de ao menos 6 caracteres");
+            const parsedPassword = newPasswordSchema.safeParse(form.get("password"));
+            if (!parsedPassword.success) {
+              toast.error(parsedPassword.error.issues[0]?.message ?? "Senha inválida");
               return;
             }
-            hire.mutate({ email, password });
+            hire.mutate({ email: parsedEmail.data, password: parsedPassword.data });
           }}
         >
           <div>
@@ -195,7 +201,7 @@ function EquipePage() {
               type="password"
               autoComplete="new-password"
               className="mt-2 w-full rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
-              placeholder="mín. 6 caracteres"
+              placeholder="mín. 12 caracteres"
             />
           </div>
           <div className="flex items-end">
