@@ -1,23 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const fileSchema = z.object({
-  name: z.string().max(300),
-  mimeType: z.string().max(120),
-  // Precisa ser data: URI. O valor vai direto no corpo mandado ao Gemini, e o
-  // campo aceitava qualquer string -- inclusive uma URL http, que faria a API
-  // do Google buscar o endereco escolhido por quem chamou e devolver o conteudo
-  // ja interpretado. Nao e a nossa rede que responde, mas continua sendo a nossa
-  // chave buscando o que mandarem.
-  dataUrl: z
-    .string()
-    .max(30_000_000)
-    .refine((value) => value.startsWith("data:"), { message: "Arquivo inválido." }),
-});
+import { fileSchema, MAX_FILES_PER_CALL } from "@/lib/ai-intake-validation";
 
 const inputSchema = z.object({
-  files: z.array(fileSchema).min(1).max(4),
+  files: z.array(fileSchema).min(1).max(MAX_FILES_PER_CALL),
 });
 
 export type ExtractedSaleItem = {
@@ -54,7 +41,10 @@ const extractionTool = {
                 type: "number",
                 description: "Preço unitário de venda em reais. 0 se a notinha só trouxer o total.",
               },
-              note: { type: "string", description: "Cliente, forma de pagamento ou detalhe curto." },
+              note: {
+                type: "string",
+                description: "Cliente, forma de pagamento ou detalhe curto.",
+              },
             },
             required: ["name", "sku", "quantity", "unit_price", "note"],
             additionalProperties: false,
@@ -83,7 +73,23 @@ Regras:
 export const extractSale = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => inputSchema.parse(data))
-  .handler(async ({ data }): Promise<ExtractedSale> => {
+  .handler(async ({ data, context }): Promise<ExtractedSale> => {
+    // Freio por usuário: sem isso, uma conta comprometida (ou um comissionado
+    // mal-intencionado) martelava esta rota sem limite nenhum, cada chamada
+    // custando uma requisição de verdade à API do Gemini.
+    //
+    // O tipo de .rpc() sai de integrations/supabase/types.ts, que o CLI gera a
+    // partir do banco: consume_ai_read_quota só aparece ali depois da migration
+    // aplicada e dos tipos regerados. Até lá, a assinatura vai declarada aqui
+    // (mesmo padrão de contact.functions.ts).
+    const consumeQuota = context.supabase.rpc as unknown as (
+      fn: "consume_ai_read_quota",
+    ) => Promise<{ data: boolean | null; error: { message: string } | null }>;
+    const { data: allowed, error: quotaError } = await consumeQuota("consume_ai_read_quota");
+    if (quotaError || !allowed) {
+      throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
+    }
+
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Serviço de leitura indisponível.");
 
@@ -101,28 +107,33 @@ export const extractSale = createServerFn({ method: "POST" })
       }
     }
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-3.6-flash",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content },
+          ],
+          tools: [extractionTool],
+          tool_choice: { type: "function", function: { name: "registrar_venda" } },
+        }),
       },
-      body: JSON.stringify({
-        model: "gemini-3.6-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content },
-        ],
-        tools: [extractionTool],
-        tool_choice: { type: "function", function: { name: "registrar_venda" } },
-      }),
-    });
+    );
 
     if (!response.ok) {
       const detail = await response.text();
       console.error("Gemini API error", response.status, detail);
-      if (response.status === 429) throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
-      if (response.status === 403) throw new Error("Chave da API do Gemini inválida ou sem permissão.");
+      if (response.status === 429)
+        throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
+      if (response.status === 403)
+        throw new Error("Chave da API do Gemini inválida ou sem permissão.");
       throw new Error("Não consegui ler esta notinha. Tente uma foto mais nítida.");
     }
 

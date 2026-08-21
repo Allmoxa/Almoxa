@@ -109,20 +109,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-const THEME_INIT_SCRIPT = `
-try {
-  if (localStorage.getItem("almoxa-theme") === "dark") {
-    document.documentElement.classList.add("dark");
-  }
-} catch (e) {}
-`;
-
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Arquivo estático (não inline) de propósito: um Content-Security-Policy
+            sem 'unsafe-inline' em script-src precisa que todo <script> venha de
+            uma URL própria -- sem async/defer, então continua bloqueando o
+            primeiro paint até rodar, prevenindo o flash do tema errado. */}
+        <script src="/theme-init.js" />
       </head>
       <body suppressHydrationWarning>
         {children}
