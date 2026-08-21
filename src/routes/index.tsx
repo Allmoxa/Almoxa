@@ -139,11 +139,10 @@ function Landing() {
               Nada de planilha. Fotografe o produto ou importe o documento da compra: nome, código,
               quantidade e preços entram sozinhos — e o lucro de cada item aparece calculado.
             </p>
-            {/* No celular os dois círculos empilham, alinhados à esquerda igual ao
-                resto do texto -- lado a lado eles disputavam espaço com pouca
-                margem de erro pro toque. Do sm: pra cima (mais largura sobrando),
-                voltam a ficar em linha, centralizados um com o outro. */}
-            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-14">
+            {/* Some no celular: a navbar já tem "Criar conta"/"Entrar" em qualquer
+                tamanho de tela, então os círculos aqui ficam só a partir do sm:,
+                onde há espaço de sobra pra eles brilharem sem competir com nada. */}
+            <div className="hidden sm:flex sm:items-center sm:gap-14">
               <CardboardLiquidButton to="/criar-conta" ariaLabel="Criar conta">
                 Criar conta
               </CardboardLiquidButton>
