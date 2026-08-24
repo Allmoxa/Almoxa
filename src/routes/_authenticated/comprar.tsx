@@ -73,7 +73,7 @@ function ComprarPage() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient, unit",
         )
         .eq("is_ingredient", false)
         .order("name");

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { qty, type Product } from "@/lib/inventory";
+import { formatBalance, type Product } from "@/lib/inventory";
 
 type Props = {
   products: Product[];
@@ -231,7 +231,7 @@ export function ProductPicker({ products, value, onChange, fallbackLabel, classN
                         <span
                           className={`shrink-0 text-xs ${empty ? "text-destructive" : "text-muted-foreground"}`}
                         >
-                          {empty ? "sem estoque" : `${qty(product.quantity)} un.`}
+                          {empty ? "sem estoque" : formatBalance(product.quantity, product.unit)}
                         </span>
                       </button>
                     </li>

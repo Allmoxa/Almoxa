@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { currency, qty, type Product } from "@/lib/inventory";
+import {
+  currency,
+  fromBaseQuantity,
+  qty,
+  toBaseQuantity,
+  unitDimension,
+  UNIT_LABELS,
+  type Product,
+} from "@/lib/inventory";
 
 export type ProductEditValues = {
   quantity: number;
@@ -11,6 +19,8 @@ export type ProductEditValues = {
 type Props = {
   product: Product;
   pending: boolean;
+  /** Conta "comida": aumentar a quantidade aqui pula a produção pela receita, então pede confirmação. */
+  confirmIncrease?: boolean;
   onCancel: () => void;
   onSubmit: (values: ProductEditValues) => void;
 };
@@ -25,8 +35,24 @@ const num = (value: string) => {
 
 const fmt = (value: number) => String(Math.round(value * 100) / 100);
 
-export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Props) {
-  const [quantity, setQuantity] = useState(fmt(product.quantity));
+export function ProductEditDialog({
+  product,
+  pending,
+  confirmIncrease = false,
+  onCancel,
+  onSubmit,
+}: Props) {
+  const unitLabel = UNIT_LABELS[product.unit];
+  // purchase_price/sale_price são sempre "por unidade-base" (grama, mililitro
+  // ou unidade) em todo o resto do app -- essa etiqueta só deixa isso claro
+  // quando o produto usa kg/l como unidade amigável, pra "0,05" não parecer
+  // um preço errado de cabeça fria.
+  const baseUnitLabel =
+    product.unit === "unidade" ? null : unitDimension(product.unit) === "massa" ? "g" : "ml";
+  // O campo mostra e recebe a quantidade na unidade amigável do produto
+  // (kg, g, ml, l ou unidade) -- por baixo, tudo continua guardado e
+  // comparado na unidade-base de sempre.
+  const [quantity, setQuantity] = useState(fmt(fromBaseQuantity(product.quantity, product.unit)));
   const [purchase, setPurchase] = useState(fmt(product.purchase_price));
   const [sale, setSale] = useState(fmt(product.sale_price));
   const [profit, setProfit] = useState(fmt(product.sale_price - product.purchase_price));
@@ -47,11 +73,12 @@ export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Prop
     setSale(fmt(num(purchase) + num(value)));
   };
 
-  const delta = num(quantity) - product.quantity;
+  const baseQuantity = toBaseQuantity(num(quantity), product.unit);
+  const delta = baseQuantity - product.quantity;
 
   const submit = () => {
     const values = {
-      quantity: num(quantity),
+      quantity: baseQuantity,
       purchase_price: num(purchase),
       sale_price: num(sale),
     };
@@ -62,6 +89,15 @@ export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Prop
     if (values.purchase_price < 0 || values.sale_price < 0) {
       toast.error("Os preços não podem ser negativos");
       return;
+    }
+    // Produto final de conta "comida" normalmente só ganha estoque pela
+    // receita -- aumentar a quantidade aqui é um ajuste de exceção, não o
+    // fluxo comum, então pede confirmação explícita em vez de salvar direto.
+    if (confirmIncrease && delta > 0) {
+      const confirmed = window.confirm(
+        `Isso adiciona ${qty(fromBaseQuantity(delta, product.unit))} ${unitLabel} de ${product.name} direto no estoque, sem passar pela receita. Confirma o ajuste?`,
+      );
+      if (!confirmed) return;
     }
     onSubmit(values);
   };
@@ -83,12 +119,12 @@ export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Prop
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="label-caps" htmlFor="edit-quantity">
-              Quantidade em estoque
+              Quantidade em estoque {unitLabel !== "un." ? `(${unitLabel})` : ""}
             </label>
             <input
               id="edit-quantity"
               type="number"
-              step="1"
+              step={product.unit === "unidade" ? "1" : "0.001"}
               min="0"
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
@@ -97,15 +133,16 @@ export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Prop
             />
             {delta !== 0 ? (
               <p className="mt-2 text-xs text-muted-foreground">
-                {delta > 0 ? "Entrada" : "Baixa"} de {qty(Math.abs(delta))} un. registrada como ajuste no histórico —
-                não entra no lucro.
+                {delta > 0 ? "Entrada" : "Baixa"} de{" "}
+                {qty(Math.abs(fromBaseQuantity(delta, product.unit)))} {unitLabel} registrada como
+                ajuste no histórico — não entra no lucro.
               </p>
             ) : null}
           </div>
 
           <div>
             <label className="label-caps" htmlFor="edit-purchase">
-              Valor de compra
+              Valor de compra {baseUnitLabel ? `(por ${baseUnitLabel})` : ""}
             </label>
             <input
               id="edit-purchase"
@@ -146,8 +183,8 @@ export function ProductEditDialog({ product, pending, onCancel, onSubmit }: Prop
               className={`mt-2 ${inputClass}`}
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              Ajustar o lucro recalcula o valor de venda. Total em estoque: {currency(num(quantity) * num(purchase))} de
-              custo.
+              Ajustar o lucro recalcula o valor de venda. Total em estoque:{" "}
+              {currency(num(quantity) * num(purchase))} de custo.
             </p>
           </div>
         </div>

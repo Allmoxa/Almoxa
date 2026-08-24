@@ -95,7 +95,7 @@ function DashboardPage() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient, unit",
         )
         .order("name");
       if (error) throw error;

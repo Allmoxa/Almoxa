@@ -23,11 +23,13 @@ export type Database = {
           kind: string
           note: string | null
           product_id: string
+          production_batch_id: string | null
           quantity: number
           reverses_id: string | null
           reversed_at: string | null
           sold_by: string | null
           source: string
+          triggered_by_movement_id: string | null
           unit_cost: number
           unit_price: number
           user_id: string
@@ -40,11 +42,13 @@ export type Database = {
           kind: string
           note?: string | null
           product_id: string
+          production_batch_id?: string | null
           quantity: number
           reverses_id?: string | null
           reversed_at?: string | null
           sold_by?: string | null
           source?: string
+          triggered_by_movement_id?: string | null
           unit_cost?: number
           unit_price?: number
           user_id: string
@@ -57,11 +61,13 @@ export type Database = {
           kind?: string
           note?: string | null
           product_id?: string
+          production_batch_id?: string | null
           quantity?: number
           reverses_id?: string | null
           reversed_at?: string | null
           sold_by?: string | null
           source?: string
+          triggered_by_movement_id?: string | null
           unit_cost?: number
           unit_price?: number
           user_id?: string
@@ -81,6 +87,13 @@ export type Database = {
             referencedRelation: "movements"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "movements_triggered_by_movement_id_fkey"
+            columns: ["triggered_by_movement_id"]
+            isOneToOne: false
+            referencedRelation: "movements"
+            referencedColumns: ["id"]
+          },
         ]
       }
       products: {
@@ -94,6 +107,7 @@ export type Database = {
           quantity: number
           sale_price: number
           sku: string
+          unit: string
           updated_at: string
           user_id: string
         }
@@ -107,6 +121,7 @@ export type Database = {
           quantity?: number
           sale_price?: number
           sku: string
+          unit?: string
           updated_at?: string
           user_id: string
         }
@@ -120,6 +135,7 @@ export type Database = {
           quantity?: number
           sale_price?: number
           sku?: string
+          unit?: string
           updated_at?: string
           user_id?: string
         }
@@ -132,6 +148,7 @@ export type Database = {
           ingredient_id: string
           product_id: string
           quantity: number
+          unit: string
           user_id: string
         }
         Insert: {
@@ -140,6 +157,7 @@ export type Database = {
           ingredient_id: string
           product_id: string
           quantity: number
+          unit?: string
           user_id: string
         }
         Update: {
@@ -148,6 +166,7 @@ export type Database = {
           ingredient_id?: string
           product_id?: string
           quantity?: number
+          unit?: string
           user_id?: string
         }
         Relationships: [

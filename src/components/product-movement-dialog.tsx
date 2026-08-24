@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { currency, qty, type Product } from "@/lib/inventory";
+import {
+  currency,
+  formatBalance,
+  toBaseQuantity,
+  unitDimension,
+  UNIT_LABELS,
+  type Product,
+} from "@/lib/inventory";
 
 export type MovementValues = {
   quantity: number;
@@ -23,6 +30,14 @@ const num = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+/**
+ * Quantidade aqui é digitada na unidade amigável do produto (kg, g, ml, l ou
+ * unidade) e convertida pra base só na hora de montar o movimento. Preço,
+ * igual em todo o resto do app, é sempre "por unidade-base" (grama/mililitro/
+ * unidade) -- nunca convertido, só relabelado quando a unidade amigável não é
+ * a própria base (mesmo padrão de product-edit-dialog.tsx), pra não misturar
+ * escalas diferentes na conta de lucro.
+ */
 export function ProductMovementDialog({ product, kind, pending, onCancel, onSubmit }: Props) {
   const isSale = kind === "out";
   const [quantity, setQuantity] = useState("1");
@@ -30,8 +45,12 @@ export function ProductMovementDialog({ product, kind, pending, onCancel, onSubm
 
   const quantityValue = num(quantity);
   const priceValue = num(price);
-  const profit = (priceValue - product.purchase_price) * quantityValue;
-  const missingStock = isSale && quantityValue > product.quantity;
+  const baseQuantity = toBaseQuantity(quantityValue, product.unit);
+  const profit = (priceValue - product.purchase_price) * baseQuantity;
+  const missingStock = isSale && baseQuantity > product.quantity;
+  const unitLabel = UNIT_LABELS[product.unit];
+  const baseUnitLabel =
+    product.unit === "unidade" ? null : unitDimension(product.unit) === "massa" ? "g" : "ml";
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/25 px-6">
@@ -44,22 +63,24 @@ export function ProductMovementDialog({ product, kind, pending, onCancel, onSubm
             toast.error("Quantidade inválida");
             return;
           }
-          onSubmit({ quantity: quantityValue, unit_price: priceValue });
+          onSubmit({ quantity: baseQuantity, unit_price: priceValue });
         }}
       >
         <p className="label-caps">{isSale ? "Registrar venda" : "Entrada"}</p>
         <h2 className="mt-2 text-2xl">{product.name}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Em estoque: {qty(product.quantity)}</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Em estoque: {formatBalance(product.quantity, product.unit)}
+        </p>
 
         <div className="mt-5 space-y-4">
           <div>
             <label className="label-caps" htmlFor="mv-quantity">
-              Quantidade
+              Quantidade {unitLabel !== "un." ? `(${unitLabel})` : ""}
             </label>
             <input
               id="mv-quantity"
               type="number"
-              step="1"
+              step={product.unit === "unidade" ? "1" : "0.001"}
               min="0"
               value={quantity}
               onChange={(event) => setQuantity(event.target.value)}
@@ -69,7 +90,7 @@ export function ProductMovementDialog({ product, kind, pending, onCancel, onSubm
           </div>
           <div>
             <label className="label-caps" htmlFor="mv-price">
-              {isSale ? "Valor de venda unitário" : "Preço unitário"}
+              {isSale ? "Valor de venda" : "Preço"} {baseUnitLabel ? `(por ${baseUnitLabel})` : ""}
             </label>
             <input
               id="mv-price"
@@ -91,7 +112,9 @@ export function ProductMovementDialog({ product, kind, pending, onCancel, onSubm
                 {currency(priceValue)} − {currency(product.purchase_price)} de custo
               </p>
             </div>
-            <p className={`font-display text-xl tabular-nums ${profit < 0 ? "text-destructive" : "text-success"}`}>
+            <p
+              className={`font-display text-xl tabular-nums ${profit < 0 ? "text-destructive" : "text-success"}`}
+            >
               {currency(profit)}
             </p>
           </div>
@@ -99,7 +122,7 @@ export function ProductMovementDialog({ product, kind, pending, onCancel, onSubm
 
         {missingStock ? (
           <p className="mt-4 text-xs text-destructive">
-            Estoque insuficiente: há {qty(product.quantity)} un. disponíveis.
+            Estoque insuficiente: há {formatBalance(product.quantity, product.unit)} disponíveis.
           </p>
         ) : null}
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { AppShell } from "@/components/AppShell";
+import { IngredientsStockView } from "@/components/ingredients-stock-view";
 import { ProductEditDialog, type ProductEditValues } from "@/components/product-edit-dialog";
 import { ProductMovementDialog, type MovementValues } from "@/components/product-movement-dialog";
 import { ProductProfitDialog } from "@/components/product-profit-dialog";
@@ -78,6 +79,10 @@ function EstoqueDono() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [profiting, setProfiting] = useState<Product | null>(null);
   const [recipeFor, setRecipeFor] = useState<Product | null>(null);
+  // Só existe pra conta "comida": separa produto final (vendável) de
+  // ingrediente (matéria-prima) em duas grades, porque as colunas e ações que
+  // importam são diferentes pros dois.
+  const [view, setView] = useState<"produtos" | "ingredientes">("produtos");
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -85,7 +90,7 @@ function EstoqueDono() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient, unit",
         )
         .eq("is_ingredient", false)
         .order("name");
@@ -280,310 +285,371 @@ function EstoqueDono() {
   return (
     <AppShell
       title="Estoque"
-      description="Cada produto com custo, preço de saída e o lucro que ele carrega hoje."
+      description={
+        view === "ingredientes"
+          ? "O saldo de cada ingrediente. Eles não aparecem pra venda nem entram na grade de produtos."
+          : "Cada produto com custo, preço de saída e o lucro que ele carrega hoje."
+      }
       action={
-        <button
-          onClick={() => setCreating((v) => !v)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-        >
-          {creating ? "Cancelar" : "Novo produto"}
-        </button>
+        view === "ingredientes" ? null : (
+          <button
+            onClick={() => setCreating((v) => !v)}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {creating ? "Cancelar" : "Novo produto"}
+          </button>
+        )
       }
     >
-      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-        {[
-          {
-            label: "Lucro hoje",
-            value: realized.today,
-            units: realized.unitsToday,
-            hint: "desde a meia-noite",
-          },
-          {
-            label: "Lucro na semana",
-            value: realized.week,
-            units: realized.unitsWeek,
-            hint: "últimos 7 dias",
-          },
-        ].map((item) => (
-          <div key={item.label} className="bg-card px-5 py-5">
-            <p className="label-caps">{item.label}</p>
-            <p
-              className={`mt-2 font-display text-3xl tabular-nums ${
-                item.value < 0 ? "text-destructive" : "text-success"
+      {businessType === "comida" ? (
+        <div className="mb-6 flex gap-2">
+          {(
+            [
+              { key: "produtos", label: "Produtos" },
+              { key: "ingredientes", label: "Ingredientes" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => setView(option.key)}
+              aria-pressed={view === option.key}
+              className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
+                view === option.key
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border-strong text-muted-foreground hover:bg-secondary"
               }`}
             >
-              {currency(item.value)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {qty(item.units)} un. vendidas — {item.hint}
-            </p>
-          </div>
-        ))}
-      </section>
-
-      <section className="mt-4 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
-        {[
-          { label: "Unidades", value: qty(totals.units) },
-          { label: "Custo em estoque", value: currency(totals.cost) },
-          { label: "Venda potencial", value: currency(totals.revenue) },
-          { label: "Lucro potencial", value: currency(totals.profit) },
-        ].map((item) => (
-          <div key={item.label} className="bg-card px-5 py-5">
-            <p className="label-caps">{item.label}</p>
-            <p className="mt-2 font-display text-2xl">{item.value}</p>
-          </div>
-        ))}
-      </section>
-
-      {creating ? (
-        <form
-          className="paper-panel mt-6 grid gap-4 p-5 sm:grid-cols-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget);
-            const parsed = productSchema.safeParse(Object.fromEntries(form));
-            if (!parsed.success) {
-              toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
-              return;
-            }
-            createProduct.mutate(parsed.data);
-          }}
-        >
-          <div className="sm:col-span-2">
-            <label className="label-caps" htmlFor="name">
-              Nome
-            </label>
-            <input
-              id="name"
-              name="name"
-              className={`mt-2 ${inputClass}`}
-              placeholder="Camiseta preta P"
-            />
-          </div>
-          <div>
-            <label className="label-caps" htmlFor="sku">
-              SKU
-            </label>
-            <input id="sku" name="sku" className={`mt-2 ${inputClass}`} placeholder="opcional" />
-          </div>
-          <div>
-            <label className="label-caps" htmlFor="purchase_price">
-              Compra
-            </label>
-            <input
-              id="purchase_price"
-              name="purchase_price"
-              type="number"
-              step="0.01"
-              defaultValue="0"
-              className={`mt-2 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className="label-caps" htmlFor="sale_price">
-              Venda
-            </label>
-            <input
-              id="sale_price"
-              name="sale_price"
-              type="number"
-              step="0.01"
-              defaultValue="0"
-              className={`mt-2 ${inputClass}`}
-            />
-          </div>
-          <div>
-            <label className="label-caps" htmlFor="quantity">
-              Quantidade inicial
-            </label>
-            <input
-              id="quantity"
-              name="quantity"
-              type="number"
-              step="1"
-              defaultValue="0"
-              className={`mt-2 ${inputClass}`}
-            />
-          </div>
-          <div className="flex items-end sm:col-span-4">
-            <button
-              type="submit"
-              disabled={createProduct.isPending}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              Salvar produto
+              {option.label}
             </button>
-          </div>
-        </form>
-      ) : null}
-
-      <div className="mt-10 flex items-center justify-between gap-4">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Buscar por nome ou SKU"
-          className="max-w-xs rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
-        />
-        <p className="label-caps">
-          {filtered.length > PAGE_SIZE
-            ? `${firstIndex + 1}–${firstIndex + visible.length} de ${filtered.length} produtos`
-            : `${filtered.length} produtos`}
-        </p>
-      </div>
-
-      {pageCount > 1 ? (
-        <div className="mt-4">
-          <PaginationNav
-            currentPage={currentPage}
-            pageCount={pageCount}
-            onChange={setPage}
-            label="Paginação do estoque"
-          />
+          ))}
         </div>
       ) : null}
 
-      <div className="paper-panel mt-4 overflow-x-auto">
-        {isLoading ? (
-          <div className="flex flex-col items-center gap-3 px-5 py-10">
-            <BoxSpinner />
-            <p className="text-center text-sm text-muted-foreground">Carregando…</p>
+      {view === "ingredientes" ? (
+        <IngredientsStockView storeOwnerId={storeOwnerId} />
+      ) : (
+        <>
+          <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
+            {[
+              {
+                label: "Lucro hoje",
+                value: realized.today,
+                units: realized.unitsToday,
+                hint: "desde a meia-noite",
+              },
+              {
+                label: "Lucro na semana",
+                value: realized.week,
+                units: realized.unitsWeek,
+                hint: "últimos 7 dias",
+              },
+            ].map((item) => (
+              <div key={item.label} className="bg-card px-5 py-5">
+                <p className="label-caps">{item.label}</p>
+                <p
+                  className={`mt-2 font-display text-3xl tabular-nums ${
+                    item.value < 0 ? "text-destructive" : "text-success"
+                  }`}
+                >
+                  {currency(item.value)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {qty(item.units)} un. vendidas — {item.hint}
+                </p>
+              </div>
+            ))}
+          </section>
+
+          <section className="mt-4 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
+            {[
+              { label: "Unidades", value: qty(totals.units) },
+              { label: "Custo em estoque", value: currency(totals.cost) },
+              { label: "Venda potencial", value: currency(totals.revenue) },
+              { label: "Lucro potencial", value: currency(totals.profit) },
+            ].map((item) => (
+              <div key={item.label} className="bg-card px-5 py-5">
+                <p className="label-caps">{item.label}</p>
+                <p className="mt-2 font-display text-2xl">{item.value}</p>
+              </div>
+            ))}
+          </section>
+
+          {creating ? (
+            <form
+              className="paper-panel mt-6 grid gap-4 p-5 sm:grid-cols-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                const parsed = productSchema.safeParse(Object.fromEntries(form));
+                if (!parsed.success) {
+                  toast.error(parsed.error.issues[0]?.message ?? "Dados inválidos");
+                  return;
+                }
+                // Produto final de conta "comida" só ganha estoque pela
+                // receita -- este formulário cria o cadastro, nunca saldo
+                // inicial, mesmo que o campo tenha sido preenchido (o
+                // atributo disabled abaixo já impede digitar, isto é reforço
+                // no envio, não a única barreira).
+                const values =
+                  businessType === "comida" ? { ...parsed.data, quantity: 0 } : parsed.data;
+                createProduct.mutate(values);
+              }}
+            >
+              <div className="sm:col-span-2">
+                <label className="label-caps" htmlFor="name">
+                  Nome
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  className={`mt-2 ${inputClass}`}
+                  placeholder="Camiseta preta P"
+                />
+              </div>
+              <div>
+                <label className="label-caps" htmlFor="sku">
+                  SKU
+                </label>
+                <input
+                  id="sku"
+                  name="sku"
+                  className={`mt-2 ${inputClass}`}
+                  placeholder="opcional"
+                />
+              </div>
+              <div>
+                <label className="label-caps" htmlFor="purchase_price">
+                  Compra
+                </label>
+                <input
+                  id="purchase_price"
+                  name="purchase_price"
+                  type="number"
+                  step="0.01"
+                  defaultValue="0"
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className="label-caps" htmlFor="sale_price">
+                  Venda
+                </label>
+                <input
+                  id="sale_price"
+                  name="sale_price"
+                  type="number"
+                  step="0.01"
+                  defaultValue="0"
+                  className={`mt-2 ${inputClass}`}
+                />
+              </div>
+              <div>
+                <label className="label-caps" htmlFor="quantity">
+                  Quantidade inicial
+                </label>
+                <input
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  step="1"
+                  defaultValue="0"
+                  disabled={businessType === "comida"}
+                  className={`mt-2 ${inputClass} disabled:opacity-60`}
+                />
+                {businessType === "comida" ? (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Produto final só ganha estoque pela receita.
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex items-end sm:col-span-4">
+                <button
+                  type="submit"
+                  disabled={createProduct.isPending}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  Salvar produto
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          <div className="mt-10 flex items-center justify-between gap-4">
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar por nome ou SKU"
+              className="max-w-xs rounded-md border border-input bg-card px-3 py-2 text-sm outline-none transition-colors focus:border-ring"
+            />
+            <p className="label-caps">
+              {filtered.length > PAGE_SIZE
+                ? `${firstIndex + 1}–${firstIndex + visible.length} de ${filtered.length} produtos`
+                : `${filtered.length} produtos`}
+            </p>
           </div>
-        ) : filtered.length === 0 ? (
-          <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            Nada aqui ainda. Cadastre manualmente ou use a tela Receber para ler uma foto ou nota.
-          </p>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="label-caps px-5 py-3 font-normal">Produto</th>
-                <th className="label-caps px-3 py-3 text-right font-normal">Qtd.</th>
-                <th className="label-caps px-3 py-3 text-right font-normal">Compra</th>
-                <th className="label-caps px-3 py-3 text-right font-normal">Venda</th>
-                <th className="label-caps px-3 py-3 text-right font-normal">Lucro un.</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((product) => {
-                const profit = product.sale_price - product.purchase_price;
-                return (
-                  <tr key={product.id} className="border-b border-border last:border-0">
-                    <td className="px-5 py-4">
-                      <p className="font-medium">{product.name}</p>
-                      <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
-                    </td>
-                    <td className="px-3 py-4 text-right tabular-nums">{qty(product.quantity)}</td>
-                    <td className="px-3 py-4 text-right tabular-nums">
-                      {currency(product.purchase_price)}
-                    </td>
-                    <td className="px-3 py-4 text-right tabular-nums">
-                      {currency(product.sale_price)}
-                    </td>
-                    <td
-                      className={`px-3 py-4 text-right tabular-nums ${profit < 0 ? "text-destructive" : "text-success"}`}
-                    >
-                      {currency(profit)}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setMoving({ product, kind: "in" })}
-                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                        >
-                          Entrada
-                        </button>
-                        <button
-                          onClick={() => setMoving({ product, kind: "out" })}
-                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                        >
-                          Vender
-                        </button>
-                        <button
-                          onClick={() => setProfiting(product)}
-                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                        >
-                          Lucros
-                        </button>
-                        <button
-                          onClick={() => setEditing(product)}
-                          className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                        >
-                          Editar
-                        </button>
-                        {businessType === "comida" ? (
-                          <button
-                            onClick={() => setRecipeFor(product)}
-                            className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
-                          >
-                            Receita
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={() => {
-                            if (confirm(`Remover ${product.name}?`))
-                              removeProduct.mutate(product.id);
-                          }}
-                          className="text-xs text-muted-foreground transition-colors hover:text-destructive"
-                        >
-                          Remover
-                        </button>
-                      </div>
-                    </td>
+
+          {pageCount > 1 ? (
+            <div className="mt-4">
+              <PaginationNav
+                currentPage={currentPage}
+                pageCount={pageCount}
+                onChange={setPage}
+                label="Paginação do estoque"
+              />
+            </div>
+          ) : null}
+
+          <div className="paper-panel mt-4 overflow-x-auto">
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-3 px-5 py-10">
+                <BoxSpinner />
+                <p className="text-center text-sm text-muted-foreground">Carregando…</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <p className="px-5 py-12 text-center text-sm text-muted-foreground">
+                Nada aqui ainda. Cadastre manualmente ou use a tela Receber para ler uma foto ou
+                nota.
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="label-caps px-5 py-3 font-normal">Produto</th>
+                    <th className="label-caps px-3 py-3 text-right font-normal">Qtd.</th>
+                    <th className="label-caps px-3 py-3 text-right font-normal">Compra</th>
+                    <th className="label-caps px-3 py-3 text-right font-normal">Venda</th>
+                    <th className="label-caps px-3 py-3 text-right font-normal">Lucro un.</th>
+                    <th className="px-5 py-3" />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {visible.map((product) => {
+                    const profit = product.sale_price - product.purchase_price;
+                    return (
+                      <tr key={product.id} className="border-b border-border last:border-0">
+                        <td className="px-5 py-4">
+                          <p className="font-medium">{product.name}</p>
+                          <p className="font-mono text-xs text-muted-foreground">{product.sku}</p>
+                        </td>
+                        <td className="px-3 py-4 text-right tabular-nums">
+                          {qty(product.quantity)}
+                        </td>
+                        <td className="px-3 py-4 text-right tabular-nums">
+                          {currency(product.purchase_price)}
+                        </td>
+                        <td className="px-3 py-4 text-right tabular-nums">
+                          {currency(product.sale_price)}
+                        </td>
+                        <td
+                          className={`px-3 py-4 text-right tabular-nums ${profit < 0 ? "text-destructive" : "text-success"}`}
+                        >
+                          {currency(profit)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center justify-end gap-2">
+                            {businessType === "comida" ? null : (
+                              <button
+                                onClick={() => setMoving({ product, kind: "in" })}
+                                className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                              >
+                                Entrada
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setMoving({ product, kind: "out" })}
+                              className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                            >
+                              Vender
+                            </button>
+                            <button
+                              onClick={() => setProfiting(product)}
+                              className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                            >
+                              Lucros
+                            </button>
+                            <button
+                              onClick={() => setEditing(product)}
+                              className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                            >
+                              Editar
+                            </button>
+                            {businessType === "comida" ? (
+                              <button
+                                onClick={() => setRecipeFor(product)}
+                                className="rounded-md border border-border-strong px-2.5 py-1 text-xs transition-colors hover:bg-secondary"
+                              >
+                                Receita
+                              </button>
+                            ) : null}
+                            <button
+                              onClick={() => {
+                                if (confirm(`Remover ${product.name}?`))
+                                  removeProduct.mutate(product.id);
+                              }}
+                              className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                            >
+                              Remover
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-      {moving ? (
-        <ProductMovementDialog
-          key={`${moving.product.id}-${moving.kind}`}
-          product={moving.product}
-          kind={moving.kind}
-          pending={registerMovement.isPending}
-          onCancel={() => setMoving(null)}
-          onSubmit={(values: MovementValues) =>
-            registerMovement.mutate({
-              product: moving.product,
-              kind: moving.kind,
-              quantity: values.quantity,
-              unit_price: values.unit_price,
-            })
-          }
-        />
-      ) : null}
+          {moving ? (
+            <ProductMovementDialog
+              key={`${moving.product.id}-${moving.kind}`}
+              product={moving.product}
+              kind={moving.kind}
+              pending={registerMovement.isPending}
+              onCancel={() => setMoving(null)}
+              onSubmit={(values: MovementValues) =>
+                registerMovement.mutate({
+                  product: moving.product,
+                  kind: moving.kind,
+                  quantity: values.quantity,
+                  unit_price: values.unit_price,
+                })
+              }
+            />
+          ) : null}
 
-      {editing ? (
-        <ProductEditDialog
-          key={editing.id}
-          product={editing}
-          pending={updateProduct.isPending}
-          onCancel={() => setEditing(null)}
-          onSubmit={(values) => updateProduct.mutate({ product: editing, values })}
-        />
-      ) : null}
+          {editing ? (
+            <ProductEditDialog
+              key={editing.id}
+              product={editing}
+              pending={updateProduct.isPending}
+              confirmIncrease={businessType === "comida"}
+              onCancel={() => setEditing(null)}
+              onSubmit={(values) => updateProduct.mutate({ product: editing, values })}
+            />
+          ) : null}
 
-      {profiting ? (
-        <ProductProfitDialog
-          product={profiting}
-          summary={profitPerProduct.get(profiting.id) ?? noProfit()}
-          onClose={() => setProfiting(null)}
-        />
-      ) : null}
+          {profiting ? (
+            <ProductProfitDialog
+              product={profiting}
+              summary={profitPerProduct.get(profiting.id) ?? noProfit()}
+              onClose={() => setProfiting(null)}
+            />
+          ) : null}
 
-      {recipeFor ? (
-        <RecipeDialog
-          product={recipeFor}
-          storeOwnerId={storeOwnerId}
-          onClose={() => setRecipeFor(null)}
-        />
-      ) : null}
+          {recipeFor ? (
+            <RecipeDialog
+              product={recipeFor}
+              storeOwnerId={storeOwnerId}
+              onClose={() => setRecipeFor(null)}
+            />
+          ) : null}
+        </>
+      )}
     </AppShell>
   );
 }

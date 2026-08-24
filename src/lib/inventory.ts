@@ -26,6 +26,89 @@ export const slugSku = (name: string) =>
     .replace(/^-|-$/g, "")
     .slice(0, 40) || "ITEM";
 
+/**
+ * Unidade de medida de um produto. products.quantity SEMPRE mora na
+ * unidade-base da dimensão (grama pra massa, mililitro pra volume, unidade
+ * pra contagem) -- o que muda por produto é só como ele é exibido/digitado.
+ * Espelha public.unit_dimension()/unit_to_base() do banco (ver migration
+ * 20260821090000): o banco é quem decide de verdade na hora da produção
+ * automática, isto aqui é só pra UI não pedir conta pro usuário fazer de
+ * cabeça.
+ */
+export const UNITS = ["unidade", "g", "kg", "ml", "l"] as const;
+export type Unit = (typeof UNITS)[number];
+
+export const UNIT_LABELS: Record<Unit, string> = {
+  unidade: "un.",
+  g: "g",
+  kg: "kg",
+  ml: "ml",
+  l: "l",
+};
+
+export const unitDimension = (unit: Unit): "massa" | "volume" | "contagem" =>
+  unit === "g" || unit === "kg" ? "massa" : unit === "ml" || unit === "l" ? "volume" : "contagem";
+
+/** As únicas trocas de unidade que fazem sentido pra cada dimensão. */
+export const UNITS_BY_DIMENSION: Record<"massa" | "volume" | "contagem", Unit[]> = {
+  massa: ["g", "kg"],
+  volume: ["ml", "l"],
+  contagem: ["unidade"],
+};
+
+const UNIT_BASE_FACTOR: Record<Unit, number> = { unidade: 1, g: 1, kg: 1000, ml: 1, l: 1000 };
+
+/** Converte um valor na unidade dada para a unidade-base da dimensão (g/ml/unidade). */
+export const toBaseQuantity = (value: number, unit: Unit) => value * UNIT_BASE_FACTOR[unit];
+
+/** Converte um valor na unidade-base de volta pra unidade escolhida, pra exibição. */
+export const fromBaseQuantity = (base: number, unit: Unit) => base / UNIT_BASE_FACTOR[unit];
+
+/** Saldo formatado na unidade própria do produto (kg/g/ml/l/un.), a partir do valor em base. */
+export const formatBalance = (base: number, unit: Unit) =>
+  `${qty(fromBaseQuantity(base, unit))} ${UNIT_LABELS[unit]}`;
+
+/**
+ * Espelha a conta de public.convert_recipe_ingredients() no banco
+ * (floor(min(saldo/precisa)) por ingrediente, ambos já na unidade-base) --
+ * só pra mostrar uma prévia na tela ("dá pra produzir X agora"). Quem decide
+ * de verdade continua sendo o gatilho no Postgres quando a entrada é
+ * confirmada; isto aqui nunca lança movimento nem muda saldo.
+ *
+ * O banco soma em NUMERIC (decimal exato); aqui é float64 -- num valor bem
+ * na fronteira (ex.: 1015g / 29g devendo dar exatamente 35), erro de
+ * arredondamento de ponto flutuante pode entregar 34,999999999999996. A
+ * folga abaixo absorve esse ruído sem arriscar arredondar pra cima um "quase
+ * completou" de verdade (a diferença real de "faltou 1g" é ordens de
+ * grandeza maior que a folga).
+ */
+export function computeProducibleUnits(
+  rows: { balanceBase: number; neededBase: number }[],
+): number {
+  if (rows.length === 0) return 0;
+  const EPSILON = 1e-9;
+  let possible = Infinity;
+  for (const row of rows) {
+    if (row.neededBase <= 0) continue;
+    possible = Math.min(possible, row.balanceBase / row.neededBase);
+  }
+  if (!Number.isFinite(possible)) return 0;
+  return Math.max(0, Math.floor(possible + EPSILON));
+}
+
+/**
+ * Nome sem acento, sem caixa e sem espaço redundante -- pra comparar "Leite
+ * em Pó", "leite em po" e "Leite  em pó" como o mesmo ingrediente. Mesmo
+ * corte de normalização que ProductPicker já usa pra busca.
+ */
+export const normalizeName = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
 export type Product = {
   id: string;
   name: string;
@@ -37,6 +120,8 @@ export type Product = {
   created_at: string;
   /** Ingrediente cru de uma receita — não aparece na grade normal, não se vende direto. */
   is_ingredient: boolean;
+  /** Unidade em que quantity é exibida/digitada -- o saldo em si é sempre guardado na base. */
+  unit: Unit;
 };
 
 export type MovementSource =

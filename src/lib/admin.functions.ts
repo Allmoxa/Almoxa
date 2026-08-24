@@ -229,7 +229,7 @@ export const getUserDetail = createServerFn({ method: "GET" })
       supabaseAdmin
         .from("products")
         .select(
-          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient",
+          "id, name, sku, quantity, purchase_price, sale_price, notes, created_at, is_ingredient, unit",
         )
         .eq("user_id", data.userId)
         .order("name"),
