@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { Campo, entrada } from "@/agenda/components/campo";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import {
+  formatarTelefone,
   formularioDoClienteSchema,
   type FormularioDoCliente,
 } from "@/agenda/lib/validation";
@@ -29,6 +30,11 @@ export function BookingForm({
     handleSubmit,
     formState: { errors },
   } = useForm<FormularioDoCliente>({ resolver: zodResolver(formularioDoClienteSchema) });
+
+  // Guardado à parte porque o onChange do register é embrulhado pela
+  // máscara logo abaixo; espalhar o register depois do onChange próprio o
+  // sobrescreveria de volta, em silêncio.
+  const telefone = register("telefone");
 
   return (
     <form onSubmit={handleSubmit(onEnviar)} className="space-y-4" noValidate>
@@ -71,8 +77,17 @@ export function BookingForm({
           inputMode="tel"
           autoComplete="tel"
           enterKeyHint="next"
+          placeholder="(11) 98765-4321"
+          maxLength={15}
           aria-invalid={!!errors.telefone}
-          {...register("telefone")}
+          {...telefone}
+          onChange={(evento) => {
+            // Reescreve o valor antes de entregar ao react-hook-form: o que
+            // ele guarda passa a ser o texto já formatado, e não sobra um
+            // segundo estado pra divergir do que está na tela.
+            evento.target.value = formatarTelefone(evento.target.value);
+            void telefone.onChange(evento);
+          }}
           className={entrada}
         />
       </Campo>

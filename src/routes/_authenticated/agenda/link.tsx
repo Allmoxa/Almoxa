@@ -14,7 +14,12 @@ import { useProvider } from "@/agenda/hooks/use-provider";
 import { supabase } from "@/integrations/supabase/client";
 import type { Provider } from "@/integrations/supabase/types";
 import { girarTokenDoCalendario, lerUrlPublica } from "@/agenda/lib/provider.functions";
-import { identidadeSchema, slugSchema, type Identidade } from "@/agenda/lib/validation";
+import {
+  formatarTelefone,
+  identidadeSchema,
+  slugSchema,
+  type Identidade,
+} from "@/agenda/lib/validation";
 
 export const Route = createFileRoute("/_authenticated/agenda/link")({
   head: () => ({ meta: [{ title: "Seu link — Almoxá" }] }),
@@ -106,9 +111,15 @@ function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: (
       display_name: provider.display_name,
       headline: provider.headline ?? "",
       contact_email: provider.contact_email ?? "",
-      phone: provider.phone ?? "",
+      // O que está no banco pode ser anterior à máscara, ou ter vindo por
+      // outro caminho; o campo abre com ele já no formato da tela.
+      phone: formatarTelefone(provider.phone ?? ""),
     },
   });
+
+  // Fora do JSX porque a máscara embrulha o onChange do register: espalhar o
+  // register depois do onChange próprio o sobrescreveria de volta.
+  const telefone = register("phone");
 
   const salvar = useMutation({
     mutationFn: async (valores: Identidade) => {
@@ -205,8 +216,14 @@ function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: (
               id="phone"
               type="tel"
               inputMode="tel"
+              placeholder="(11) 98765-4321"
+              maxLength={15}
               aria-invalid={!!errors.phone}
-              {...register("phone")}
+              {...telefone}
+              onChange={(evento) => {
+                evento.target.value = formatarTelefone(evento.target.value);
+                void telefone.onChange(evento);
+              }}
               className={entrada}
             />
           </Campo>

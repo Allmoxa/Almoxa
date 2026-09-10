@@ -74,7 +74,7 @@ function Comprovante() {
   const fim = new Date(agendamento.fim);
 
   return (
-    <div className="min-h-screen bg-background paper-texture-bg">
+    <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-md px-4 py-10 sm:py-16">
         <div className="text-center font-logo text-lg font-semibold">
           <LogoBracket>Almoxá Agenda</LogoBracket>

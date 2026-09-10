@@ -39,6 +39,35 @@ export const telefoneSchema = z
   .optional()
   .or(z.literal(""));
 
+/**
+ * Telefone brasileiro enquanto se digita: "11987654321" → "(11) 98765-4321".
+ *
+ * Formata a cada tecla em vez de só conferir no envio, porque o campo aceita
+ * qualquer coisa e o erro só apareceria depois de o formulário inteiro ser
+ * enviado — tarde demais pra quem digitou o número sem o DDD.
+ *
+ * O corte em 11 dígitos é o teto do país (2 do DDD + 9 do celular), e é ele que
+ * impede a linha de vinte dígitos que aparecia aqui antes. A quebra muda de
+ * 4-4 pra 5-4 quando chega o nono dígito: é o que separa fixo de celular, e
+ * decidir antes disso deixaria "(11) 3456-7" piscando errado no meio.
+ *
+ * Número de fora do Brasil não passa por aqui inteiro — o "+" e o código do
+ * país somem. O campo é opcional e serve pro prestador ligar; quem precisar
+ * disso põe na observação, que é texto livre.
+ */
+export function formatarTelefone(valor: string): string {
+  const digitos = valor.replace(/\D/g, "").slice(0, 11);
+  if (digitos.length === 0) return "";
+  if (digitos.length <= 2) return `(${digitos}`;
+
+  const ddd = digitos.slice(0, 2);
+  const numero = digitos.slice(2);
+  if (numero.length <= 4) return `(${ddd}) ${numero}`;
+  // Até 8 dígitos é fixo (4-4); o nono chega e vira celular (5-4).
+  if (numero.length <= 8) return `(${ddd}) ${numero.slice(0, 4)}-${numero.slice(4)}`;
+  return `(${ddd}) ${numero.slice(0, 5)}-${numero.slice(5)}`;
+}
+
 export const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Data inválida" });
 
 export const horaSchema = z

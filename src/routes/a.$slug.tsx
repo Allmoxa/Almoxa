@@ -132,7 +132,7 @@ function PaginaPublica() {
         };
 
   return (
-    <div className="min-h-screen bg-background paper-texture-bg">
+    <div className="min-h-screen bg-background">
       <Cabecalho agenda={agenda} />
 
       <main className="mx-auto max-w-3xl px-4 pb-8 sm:px-6">
@@ -313,7 +313,7 @@ function FusoDiferente({ timeZone }: { timeZone: string }) {
 
 function AgendaFechada({ agenda }: { agenda: AgendaPublica }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background paper-texture-bg px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-sm text-center">
         <div className="mx-auto block w-fit font-logo text-lg font-semibold">
           <LogoBracket>Almoxá Agenda</LogoBracket>
