@@ -17,6 +17,9 @@ import { girarTokenDoCalendario, lerUrlPublica } from "@/agenda/lib/provider.fun
 import {
   formatarTelefone,
   identidadeSchema,
+  mensagemDeErro,
+  normalizarSlug,
+  slugParaSalvar,
   slugSchema,
   type Identidade,
 } from "@/agenda/lib/validation";
@@ -59,9 +62,21 @@ function PaginaDoLink() {
     );
   }
 
-  const raiz = base.data?.base ?? "";
+  // O endereço que o prestador copia sai do próprio navegador dele: é o
+  // domínio por onde ele entrou, e não depende de ninguém ter cadastrado
+  // AGENDA_PUBLIC_URL no deploy. Era isso que fazia esta tela oferecer
+  // "https://<seu-dominio>/a/..." — o valor de exemplo, copiado tal e qual
+  // pras variáveis de ambiente — como se fosse um link de verdade.
+  const raiz = typeof window === "undefined" ? (base.data?.base ?? "") : window.location.origin;
   const linkPublico = `${raiz}/a/${provider.data.slug}`;
   const feed = `${raiz}/api/calendario/${provider.data.calendar_token}.ics`;
+
+  // A variável do servidor continua mandando nos e-mails, onde não existe
+  // navegador pra perguntar. Quando as duas discordam, quem recebe confirmação
+  // e lembrete é que leva o link quebrado — e é o único lugar onde isso dá pra
+  // perceber antes de um cliente reclamar.
+  const baseDosEmails = base.data?.base ?? "";
+  const emailsComLinkErrado = baseDosEmails !== "" && baseDosEmails !== raiz;
 
   return (
     <AppShell
@@ -77,10 +92,12 @@ function PaginaDoLink() {
         <LinkPublico
           providerId={provider.data.id}
           link={linkPublico}
+          raiz={raiz}
           slug={provider.data.slug}
           aceitando={provider.data.accepting}
           onMudou={() => void queryClient.invalidateQueries({ queryKey: ["provider"] })}
         />
+        {emailsComLinkErrado ? <AvisoDeUrlDosEmails configurada={baseDosEmails} correta={raiz} /> : null}
         <Sincronizacao feed={feed} />
       </div>
     </AppShell>
@@ -145,7 +162,7 @@ function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: (
       reset(dados);
       onMudou();
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível salvar.")),
   });
 
   return (
@@ -242,15 +259,44 @@ function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: (
   );
 }
 
+/**
+ * O link desta tela está certo, mas o dos e-mails não.
+ *
+ * Os dois saem de fontes diferentes: o de cima, do navegador; o dos e-mails,
+ * de `AGENDA_PUBLIC_URL`, porque cron e confirmação rodam sem ninguém olhando.
+ * Quando a variável está errada ou ficou com o valor de exemplo, todo link de
+ * confirmação, lembrete e cancelamento sai quebrado — e ninguém descobre, já
+ * que quem recebe é o cliente, não o prestador.
+ */
+function AvisoDeUrlDosEmails({ configurada, correta }: { configurada: string; correta: string }) {
+  return (
+    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+      <p className="text-sm font-medium">Os e-mails estão saindo com link errado</p>
+      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+        A confirmação e o lembrete apontam para{" "}
+        <code className="font-mono text-xs">{configurada}</code>, que não é o
+        endereço deste site. Quem receber não consegue abrir nem desmarcar.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        Corrija a variável <code className="font-mono text-xs">AGENDA_PUBLIC_URL</code> para{" "}
+        <code className="font-mono text-xs">{correta}</code> nas variáveis de
+        ambiente do deploy e publique de novo.
+      </p>
+    </div>
+  );
+}
+
 function LinkPublico({
   providerId,
   link,
+  raiz,
   slug,
   aceitando,
   onMudou,
 }: {
   providerId: string;
   link: string;
+  raiz: string;
   slug: string;
   aceitando: boolean;
   onMudou: () => void;
@@ -258,9 +304,15 @@ function LinkPublico({
   const [novoSlug, setNovoSlug] = useState(slug);
   const [editando, setEditando] = useState(false);
 
+  // Sem o protocolo: o que importa é a forma do endereço, e "https://" só
+  // rouba largura do campo no celular.
+  const prefixo = `${raiz.replace(/^https?:\/\//, "")}/a/`;
+
   const salvarSlug = useMutation({
     mutationFn: async () => {
-      const validado = slugSchema.parse(novoSlug);
+      // slugParaSalvar tira o hífen do fim, que o campo preserva enquanto se
+      // digita — "almoxa-" é passagem obrigatória pra escrever "almoxa-to".
+      const validado = slugSchema.parse(slugParaSalvar(novoSlug));
       // O .eq é redundante com a RLS, que já limita à própria linha, mas um
       // UPDATE sem filtro depende inteiramente dela estar certa — e o dia em
       // que uma política afrouxar, este alvo continua sendo um só.
@@ -277,7 +329,7 @@ function LinkPublico({
       setEditando(false);
       onMudou();
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível salvar.")),
   });
 
   const alternarAceite = useMutation({
@@ -326,17 +378,30 @@ function LinkPublico({
                 <label htmlFor="slug" className="label-caps">
                   Endereço personalizado
                 </label>
-                <input
-                  id="slug"
-                  type="text"
-                  value={novoSlug}
-                  onChange={(e) => setNovoSlug(e.target.value.toLowerCase())}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  className="mt-1.5 w-full rounded-md border border-input bg-card px-3 py-2.5 font-mono text-sm outline-none focus:border-ring"
-                />
+                {/* O prefixo fica à vista dentro da própria caixa: sem ele, o
+                    campo aparecia vazio logo abaixo do endereço completo, e o
+                    caminho natural era colar o endereço inteiro ali — que é
+                    exatamente o que o schema recusa. */}
+                <div className="mt-1.5 flex items-stretch rounded-md border border-input bg-card focus-within:border-ring">
+                  <span
+                    aria-hidden="true"
+                    className="flex max-w-[45%] items-center truncate pl-3 font-mono text-sm text-muted-foreground select-none"
+                  >
+                    {prefixo}
+                  </span>
+                  <input
+                    id="slug"
+                    type="text"
+                    value={novoSlug}
+                    onChange={(e) => setNovoSlug(normalizarSlug(e.target.value))}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    className="min-w-0 flex-1 rounded-r-md bg-transparent py-2.5 pr-3 font-mono text-sm outline-none"
+                  />
+                </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Só minúsculas, números e hífen. Trocar quebra o link antigo.
+                  Só o final do endereço: minúsculas, números e hífen. Trocar
+                  quebra o link antigo.
                 </p>
               </div>
               <button

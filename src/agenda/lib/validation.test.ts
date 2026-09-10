@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatarTelefone, telefoneSchema } from "@/agenda/lib/validation";
+import {
+  formatarTelefone,
+  normalizarSlug,
+  slugParaSalvar,
+  slugSchema,
+  telefoneSchema,
+} from "@/agenda/lib/validation";
 
 describe("formatarTelefone", () => {
   it("põe o DDD entre parênteses assim que ele existe", () => {
@@ -47,6 +53,45 @@ describe("formatarTelefone", () => {
   it("produz sempre algo que o schema aceita", () => {
     for (const bruto of ["1", "119", "1134567890", "11987654321", "9".repeat(30)]) {
       expect(telefoneSchema.safeParse(formatarTelefone(bruto)).success).toBe(true);
+    }
+  });
+});
+
+describe("normalizarSlug", () => {
+  it("aceita o que já está certo sem mexer", () => {
+    expect(normalizarSlug("almoxa-to")).toBe("almoxa-to");
+  });
+
+  it("tira o endereço inteiro que a pessoa colou do campo de cima", () => {
+    // O caso real: o campo fica logo abaixo do link público, e é ele que
+    // acabou de ser copiado.
+    expect(normalizarSlug("almoxa.vercell.app/")).toBe("almoxa-vercell-app");
+    expect(normalizarSlug("https://almoxa.vercel.app/a/almoxa-to")).toBe("almoxa-to");
+    expect(normalizarSlug("almoxa.vercel.app/a/salao-do-ze")).toBe("salao-do-ze");
+  });
+
+  it("troca maiúscula e espaço por algo que o banco aceita, e tira o acento", () => {
+    // Acento sai como acento, não como hífen: "sal-o-do-z" seria um endereço
+    // que ninguém reconhece como o próprio nome.
+    expect(normalizarSlug("Salão do Zé")).toBe("salao-do-ze");
+    expect(normalizarSlug("dois--hifens")).toBe("dois-hifens");
+    expect(normalizarSlug("-começo")).toBe("comeco");
+  });
+
+  // Digitar "almoxa-to" passa por "almoxa-"; comer o hífen a cada tecla
+  // impediria escrever o nome inteiro.
+  it("preserva o hífen do fim enquanto se digita", () => {
+    expect(normalizarSlug("almoxa-")).toBe("almoxa-");
+    expect(slugParaSalvar("almoxa-")).toBe("almoxa");
+  });
+
+  it("respeita o teto de 40 caracteres do banco", () => {
+    expect(normalizarSlug("a".repeat(60))).toHaveLength(40);
+  });
+
+  it("entrega ao schema algo que ele aceita", () => {
+    for (const bruto of ["almoxa.vercell.app/", "https://x.app/a/salao-do-ze", "Salão do Zé"]) {
+      expect(slugSchema.safeParse(slugParaSalvar(bruto)).success).toBe(true);
     }
   });
 });

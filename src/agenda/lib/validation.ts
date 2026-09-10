@@ -19,6 +19,48 @@ export const slugSchema = z
     message: "Só letras minúsculas, números e hífen — sem hífen no começo ou no fim",
   });
 
+/**
+ * Endereço personalizado enquanto se digita.
+ *
+ * O campo pede só o pedaço final do link, mas quem chega nele acabou de copiar
+ * o endereço inteiro logo acima — e cola "almoxa.vercel.app/" ali. Sem isto o
+ * salvamento morria num erro de regex sobre um texto que a pessoa nem sabia
+ * que estava enviando.
+ *
+ * O hífen do fim sobrevive de propósito: quem digita "almoxa-to" passa por
+ * "almoxa-", e comer o hífen a cada tecla impediria escrever o nome inteiro.
+ * Quem tira é `slugParaSalvar`, no envio.
+ */
+export function normalizarSlug(valor: string): string {
+  let texto = valor.trim().toLowerCase().replace(/^[a-z]+:\/\//, "");
+
+  // Link inteiro colado: o que interessa é o que vem depois de /a/.
+  const depoisDoA = /\/a\/([^/?#]*)/.exec(texto);
+  if (depoisDoA) {
+    texto = depoisDoA[1] ?? "";
+  } else if (texto.includes("/")) {
+    const partes = texto.split("/").filter(Boolean);
+    texto = partes[partes.length - 1] ?? "";
+  }
+
+  return texto
+    // "Salão do Zé" vira "salao-do-ze", não "sal-o-do-z": sem tirar o acento
+    // antes, cada letra acentuada viraria um hífen no meio do nome. O NFD
+    // separa a letra do seu sinal, e a linha seguinte apaga o sinal — que,
+    // sozinho, é o que sobrou fora do ASCII imprimível (do espaço ao til).
+    .normalize("NFD")
+    .replace(/[^ -~]/g, "")
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+/, "")
+    .slice(0, 40);
+}
+
+/** O mesmo, pronto pra gravar: sem o hífen solto que o CHECK do banco recusa. */
+export function slugParaSalvar(valor: string): string {
+  return normalizarSlug(valor).replace(/-+$/, "");
+}
+
 export const emailSchema = z
   .string()
   .trim()
@@ -251,6 +293,21 @@ export const reguaSchema = z.object({
 });
 
 export type Regua = z.input<typeof reguaSchema>;
+
+/**
+ * Mensagem legível de um erro que veio parar num `toast`.
+ *
+ * `ZodError.message` é o array de issues serializado em JSON — o schema traz
+ * mensagens escritas pra pessoa ler, e elas chegavam à tela embrulhadas em
+ * `[ { "validation": "regex", "code": "invalid_string", … } ]`. Quem valida
+ * dentro de um `mutationFn` cai sempre neste caminho, porque o erro sobe cru
+ * até o `onError`.
+ */
+export function mensagemDeErro(erro: unknown, padrao: string): string {
+  if (erro instanceof z.ZodError) return erro.issues[0]?.message ?? padrao;
+  if (erro instanceof Error && erro.message) return erro.message;
+  return padrao;
+}
 
 /** Reais a partir de centavos: 4990 → "R$ 49,90". null → "Sob consulta". */
 export function formatarPreco(centavos: number | null): string {

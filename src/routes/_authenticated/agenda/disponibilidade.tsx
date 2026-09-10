@@ -5,7 +5,6 @@ import { CalendarOff, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { z } from "zod";
 import { AgendaTabs } from "@/agenda/components/agenda-tabs";
 import { Campo, entrada } from "@/agenda/components/campo";
 import { AppShell } from "@/components/AppShell";
@@ -15,18 +14,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AvailabilityBlock, AvailabilityRule, Provider } from "@/integrations/supabase/types";
 import { completo } from "@/agenda/lib/formato";
 import { addDaysToIsoDate, isoDateTimeToInstant } from "@/agenda/lib/timezone";
-import { bloqueioSchema, regraSchema, reguaSchema, type Regua } from "@/agenda/lib/validation";
-
-/**
- * Primeira mensagem de um schema que não passou.
- *
- * Estes formulários não são react-hook-form (são campos soltos com useState),
- * então o erro do zod chega cru no `toast` — e `ZodError.message` é um JSON
- * inteiro, ilegível pra quem está olhando a tela.
- */
-function mensagemDoErro(erro: z.ZodError, padrao: string): string {
-  return erro.issues[0]?.message ?? padrao;
-}
+import {
+  bloqueioSchema,
+  mensagemDeErro,
+  regraSchema,
+  reguaSchema,
+  type Regua,
+} from "@/agenda/lib/validation";
 
 export const Route = createFileRoute("/_authenticated/agenda/disponibilidade")({
   head: () => ({ meta: [{ title: "Disponibilidade — Almoxá" }] }),
@@ -137,7 +131,7 @@ function ReguaDeAgendamento({ provider }: { provider: Provider }) {
       // prestador descreve a régua antiga.
       void queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível salvar.")),
   });
 
   // Fuso fora da lista (conta antiga, ou cadastro feito à mão) não pode sumir
@@ -319,18 +313,15 @@ function Expediente({ providerId }: { providerId: string }) {
       // O mesmo schema que descreve a regra no resto do app: hora no formato
       // certo e fim depois do começo. Checar na mão aqui era a porta pra os
       // dois lados discordarem.
-      const validada = regraSchema.safeParse({
+      const validada = regraSchema.parse({
         weekday,
         starts_at: novoInicio,
         ends_at: novoFim,
       });
-      if (!validada.success) {
-        throw new Error(mensagemDoErro(validada.error, "Faixa inválida."));
-      }
 
       const { error } = await supabase.from("availability_rules").insert({
         provider_id: providerId,
-        ...validada.data,
+        ...validada,
       });
       // 23505 é a UNIQUE (provider_id, weekday, starts_at, ends_at).
       if (error?.code === "23505") throw new Error("Essa faixa já existe nesse dia.");
@@ -340,7 +331,7 @@ function Expediente({ providerId }: { providerId: string }) {
       setAdicionandoEm(null);
       void queryClient.invalidateQueries({ queryKey: ["regras"] });
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível adicionar."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível adicionar.")),
   });
 
   const remover = useMutation({
@@ -489,31 +480,28 @@ function Bloqueios({ providerId, timeZone }: { providerId: string; timeZone: str
     mutationFn: async () => {
       if (!dia) throw new Error("Escolha o dia.");
 
-      const validado = bloqueioSchema.safeParse({
+      const validado = bloqueioSchema.parse({
         dia,
         diaInteiro,
         starts_at: diaInteiro ? undefined : inicio,
         ends_at: diaInteiro ? undefined : fim,
         reason: motivo.trim() || undefined,
       });
-      if (!validado.success) {
-        throw new Error(mensagemDoErro(validado.error, "Bloqueio inválido."));
-      }
 
-      const de = isoDateTimeToInstant(dia, validado.data.starts_at ?? "00:00", timeZone);
+      const de = isoDateTimeToInstant(dia, validado.starts_at ?? "00:00", timeZone);
       // Dia inteiro termina na meia-noite do dia seguinte, não às 23:59: o
       // bloqueio é meio aberto [de, até), e parar às 23:59 deixava o último
       // minuto do dia de fora — um atendimento que começasse ali passava por
       // cima da folga.
-      const ate = validado.data.diaInteiro
+      const ate = validado.diaInteiro
         ? isoDateTimeToInstant(addDaysToIsoDate(dia, 1), "00:00", timeZone)
-        : isoDateTimeToInstant(dia, validado.data.ends_at ?? "23:59", timeZone);
+        : isoDateTimeToInstant(dia, validado.ends_at ?? "23:59", timeZone);
 
       const { error } = await supabase.from("availability_blocks").insert({
         provider_id: providerId,
         starts_at: de.toISOString(),
         ends_at: ate.toISOString(),
-        reason: validado.data.reason ?? null,
+        reason: validado.reason ?? null,
       });
       if (error) throw error;
     },
@@ -523,7 +511,7 @@ function Bloqueios({ providerId, timeZone }: { providerId: string; timeZone: str
       setMotivo("");
       void queryClient.invalidateQueries({ queryKey: ["bloqueios"] });
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível bloquear."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível bloquear.")),
   });
 
   const remover = useMutation({

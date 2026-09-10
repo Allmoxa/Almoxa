@@ -25,6 +25,7 @@ import {
   centavosDoPreco,
   formatarDuracao,
   formatarPreco,
+  mensagemDeErro,
   servicoSchema,
   type ServicoEmEdicao,
 } from "@/agenda/lib/validation";
@@ -224,7 +225,7 @@ function DialogoDeServico({
       reset();
       onFechar();
     },
-    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+    onError: (erro) => toast.error(mensagemDeErro(erro, "Não foi possível salvar.")),
   });
 
   const ativo = watch("active");
