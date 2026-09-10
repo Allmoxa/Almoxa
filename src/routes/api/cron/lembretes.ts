@@ -41,6 +41,20 @@ export const Route = createFileRoute("/api/cron/lembretes")({
           return Response.json({ erro: "Não configurado" }, { status: 503 });
         }
 
+        // O segredo é comparado contra um valor de header, e header HTTP só
+        // carrega ASCII visível. Um acento aqui nunca casa com o que chega, e
+        // o sintoma seria 401 em toda passada do cron — sem lembrete e sem
+        // pista do motivo. Na Vercel o deploy já recusa; via pg_cron, ou em
+        // outro host, este 503 é o que troca o silêncio por uma explicação.
+        if (!/^[ -~]+$/.test(segredo)) {
+          console.error(
+            "[agenda] CRON_SECRET tem caractere fora do ASCII (acento?); " +
+              "header HTTP não carrega isso, então nenhuma chamada seria autorizada. " +
+              "Gere com: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+          );
+          return Response.json({ erro: "Segredo inválido" }, { status: 503 });
+        }
+
         const enviado = request.headers.get("authorization") ?? "";
         if (!comparaEmTempoConstante(enviado, `Bearer ${segredo}`)) {
           return Response.json({ erro: "Não autorizado" }, { status: 401 });

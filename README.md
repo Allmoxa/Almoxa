@@ -101,6 +101,15 @@ o plano Hobby recusa qualquer coisa mais frequente. `CRON_SECRET` autoriza a
 rota, comparado em tempo constante; sem o segredo ela responde 503 em vez de
 abrir — melhor não enviar do que deixar endpoint público disparando e-mail.
 
+O segredo viaja como valor de header (`Authorization: Bearer …`), e header HTTP
+só aceita ASCII visível. Um acento ali derruba o deploy com "contains characters
+that are not valid in HTTP headers" — armadilha fácil de pisar escrevendo em
+português. Gerar em hexadecimal resolve por construção:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
 A cadência diária muda a regra de disparo, e o código sabe: comparar só "está
 dentro da antecedência?" perderia lembrete calado, porque um horário de hoje à
 tarde com antecedência de 2h seria julgado "longe" às 8h e na passada seguinte
