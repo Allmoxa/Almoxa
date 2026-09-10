@@ -39,7 +39,13 @@ function PaginaDaAgenda() {
 
       const { data, error } =
         aba === "proximos"
-          ? await consulta.gte("starts_at", agora).order("starts_at", { ascending: true })
+          ? await consulta
+              .gte("starts_at", agora)
+              .order("starts_at", { ascending: true })
+              // Teto como o do histórico: com max_days_ahead em 365 e agenda
+              // cheia, "tudo o que vem pela frente" é uma consulta que só
+              // cresce, e a tela renderiza cada linha num cartão.
+              .limit(200)
           : await consulta
               .lt("starts_at", agora)
               .order("starts_at", { ascending: false })
@@ -135,7 +141,20 @@ function PaginaDaAgenda() {
         ))}
       </div>
 
-      {provider.isPending || agendamentos.isPending ? (
+      {provider.isPending ? (
+        <div className="flex flex-col items-center gap-3 py-16">
+          <BoxSpinner size={36} />
+          <p className="text-sm text-muted-foreground">Carregando a agenda…</p>
+        </div>
+      ) : !provider.data ? (
+        // Sem cadastro de prestador a consulta fica desabilitada, e consulta
+        // desabilitada é `isPending` pra sempre no react-query — era o que
+        // deixava esta tela girando sem fim. A migration retroativa criou o
+        // cadastro de todo mundo, então isto aqui virou beira de precipício:
+        // continua valendo por causa da conta que aparecer antes de a
+        // migration rodar no ambiente.
+        <SemCadastro />
+      ) : agendamentos.isPending ? (
         <div className="flex flex-col items-center gap-3 py-16">
           <BoxSpinner size={36} />
           <p className="text-sm text-muted-foreground">Carregando a agenda…</p>
@@ -175,6 +194,33 @@ function PaginaDaAgenda() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+/**
+ * Beira de precipício da tela: conta sem linha em `providers`.
+ *
+ * Diz o que aconteceu e como sair, em vez de um spinner eterno ou de um
+ * "cadastro não encontrado" que não sugere nada. Recarregar resolve porque o
+ * cadastro nasce no primeiro login (gatilho) ou na migration retroativa.
+ */
+function SemCadastro() {
+  return (
+    <div className="paper-panel mt-6 p-10 text-center">
+      <CalendarDays className="mx-auto size-7 text-muted-foreground" />
+      <p className="mt-4 text-base">Sua agenda ainda não foi preparada</p>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+        Isso costuma se resolver ao recarregar a página. Se continuar assim,
+        fale com o suporte — o cadastro de prestador desta conta não foi criado.
+      </p>
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-6 inline-flex min-h-10 items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+      >
+        Recarregar
+      </button>
+    </div>
   );
 }
 

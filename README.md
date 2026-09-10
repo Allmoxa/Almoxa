@@ -70,8 +70,8 @@ estar lá.
 | ------------------------- | ---------------------------------------------- |
 | `/agenda`                 | horários marcados                              |
 | `/agenda/servicos`        | o que você oferece                             |
-| `/agenda/disponibilidade` | expediente e folgas                            |
-| `/agenda/link`            | link público e assinatura de calendário        |
+| `/agenda/disponibilidade` | expediente, folgas e a régua de agendamento    |
+| `/agenda/link`            | identidade pública, link e calendário          |
 | `/a/$slug`                | **agendamento público — sem login**            |
 | `/agendamento/$token`     | comprovante do cliente: ver, salvar, desmarcar |
 | `/api/calendario/$token`  | feed `.ics`                                    |
@@ -79,6 +79,13 @@ estar lá.
 
 As quatro primeiras entram pela aba **Agenda** na barra de cima, e se dividem
 por sub-abas dentro da página: oito abas na barra principal não caberiam.
+
+`/a/$slug` responde 404 enquanto a conta não tiver cadastrado nenhum serviço.
+Todo mundo que cria conta no Almoxá ganha um prestador com slug derivado do
+e-mail, use a Agenda ou não — e uma página que respondesse 200 com o nome da
+pessoa em `/a/<prefixo-do-e-mail>` seria um verificador de "fulano tem conta
+aqui?" para quem soubesse o e-mail alheio. Serviço cadastrado e depois desligado
+é outro caso: aí a página existe e diz que a agenda está fechada.
 
 **Duas decisões que sustentam o resto:**
 
@@ -128,17 +135,17 @@ Como os dois lados usam o mesmo projeto Supabase, compartilham `auth.users` e as
 tabelas não colidem.
 
 O trigger `on_auth_user_created_agenda` só cadastra prestador para conta criada
-**depois** da migration. Se o projeto já tinha usuários, faça o backfill:
+**depois** da migration, então o projeto que já tinha usuários precisa do
+retroativo — e sem ele a Agenda sobe inacessível justamente para quem já usava o
+Almoxá: sem linha em `providers`, as quatro telas não têm o que mostrar e não há
+por onde criar o cadastro.
 
-```sql
-INSERT INTO public.providers (user_id, slug, display_name, contact_email)
-SELECT u.id,
-       btrim(left(regexp_replace(lower(split_part(u.email, '@', 1)), '[^a-z0-9]+', '-', 'g'), 32), '-'),
-       split_part(u.email, '@', 1),
-       u.email
-FROM auth.users u
-ON CONFLICT (user_id) DO NOTHING;
-```
+`20260910100000_agenda_cadastro_retroativo.sql` faz isso ao ser aplicada. Ela
+tira a lógica do slug de dentro do trigger (`public.slug_de_prestador`) e a
+reaproveita nos dois caminhos, um usuário por vez: o slug de cada conta depende
+dos que já foram gravados, e duas contas `contato@` de provedores diferentes
+disputam o mesmo endereço — quem chega depois vira `contato-1`. É idempotente,
+então rodar de novo não duplica nem sobrescreve cadastro já ajustado.
 
 ## 🔑 Autenticação
 

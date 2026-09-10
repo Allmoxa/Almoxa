@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deveEnviarAgora, tetoDaConsultaMs } from "./lembretes";
+import { deveEnviarAgora, tetoDaConsultaMs, textoDeAntecedencia } from "./lembretes";
 
 const h = (horas: number) => horas * 60 * 60 * 1000;
 const DIARIO = 1440;
@@ -128,5 +128,39 @@ describe("tetoDaConsultaMs", () => {
 
   it("acompanha o intervalo informado", () => {
     expect(tetoDaConsultaMs(CADA_15_MIN)).toBe(h(168) + 15 * 60 * 1000);
+  });
+});
+
+describe("textoDeAntecedencia", () => {
+  const SP = "America/Sao_Paulo";
+
+  it("diz 'amanhã' só quando é mesmo o dia seguinte", () => {
+    // Cron das 11h UTC = 08h em São Paulo, dia 10.
+    const agora = new Date("2026-09-10T11:00:00Z");
+    // 09:00 do dia 11 em São Paulo.
+    expect(textoDeAntecedencia(new Date("2026-09-11T12:00:00Z"), agora, SP)).toBe("amanhã");
+  });
+
+  it("não chama de 'amanhã' o que está a dois dias", () => {
+    // O caso que o cron diário cria: antecedência de 24h, envio a 47h.
+    const agora = new Date("2026-09-10T11:00:00Z");
+    expect(textoDeAntecedencia(new Date("2026-09-12T10:00:00Z"), agora, SP)).toBe("em 2 dias");
+  });
+
+  it("conta em horas dentro do mesmo dia", () => {
+    const agora = new Date("2026-09-10T11:00:00Z");
+    expect(textoDeAntecedencia(new Date("2026-09-10T14:00:00Z"), agora, SP)).toBe("em cerca de 3h");
+  });
+
+  it("encurta para 'daqui a pouco' quando falta uma hora ou menos", () => {
+    const agora = new Date("2026-09-10T11:00:00Z");
+    expect(textoDeAntecedencia(new Date("2026-09-10T11:40:00Z"), agora, SP)).toBe("daqui a pouco");
+  });
+
+  it("usa o dia do calendário do prestador, não múltiplos de 24h", () => {
+    // 23h de segunda em São Paulo (02h de terça em UTC).
+    const agora = new Date("2026-09-15T02:00:00Z");
+    // 08h de terça em São Paulo: faltam 9 horas, mas é o dia seguinte.
+    expect(textoDeAntecedencia(new Date("2026-09-15T11:00:00Z"), agora, SP)).toBe("amanhã");
   });
 });

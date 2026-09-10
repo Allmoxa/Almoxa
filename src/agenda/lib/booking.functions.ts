@@ -46,13 +46,24 @@ export type AgendaPublica = {
 /** Erro cuja mensagem pode aparecer pro usuário. Erro cru vira texto genérico. */
 class ErroDeAgenda extends Error {}
 
-function urlPublica(): string {
-  return (process.env["AGENDA_PUBLIC_URL"] ?? "http://localhost:8081").replace(/\/+$/, "");
-}
-
+/**
+ * IP de quem está pedindo, pro freio de agendamentos.
+ *
+ * A ordem não é gosto: `x-forwarded-for` é o único destes que o cliente também
+ * consegue mandar. Se a plataforma anexar o valor recebido em vez de
+ * sobrescrevê-lo, o primeiro item da lista passa a ser o que o cliente
+ * escreveu — e aí cada requisição inventa um IP novo, cada uma com sua cota.
+ * Os dois primeiros cabeçalhos são postos pela borda da Vercel e não chegam do
+ * navegador; o `x-forwarded-for` fica de último, como rede de segurança pra
+ * quem hospedar isto em outro lugar.
+ */
 function ipDaRequisicao(): string {
-  const forwarded = getRequest()?.headers.get("x-forwarded-for") ?? "";
-  return (forwarded.split(",")[0] ?? "").trim() || "desconhecido";
+  const headers = getRequest()?.headers;
+  if (!headers) return "desconhecido";
+
+  const daPlataforma = headers.get("x-vercel-forwarded-for") ?? headers.get("x-real-ip") ?? "";
+  const primeiro = (daPlataforma || (headers.get("x-forwarded-for") ?? "")).split(",")[0] ?? "";
+  return primeiro.trim() || "desconhecido";
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +75,18 @@ export const carregarAgendaPublica = createServerFn({ method: "GET" })
   // Devolve null, não lança, quando o slug não existe: link digitado errado é
   // "não encontrado", e a rota converte isso na página 404. Lançar aqui daria
   // "erro do servidor" pra um endereço simplesmente inexistente.
+  //
+  // Agenda de quem nunca cadastrou serviço nenhum também devolve null, e isso
+  // é decisão de privacidade, não economia de consulta. Todo mundo que cria
+  // conta no Almoxá ganha um prestador com slug derivado do e-mail, mesmo quem
+  // nunca vai abrir a Agenda. Responder 200 com o nome da pessoa em
+  // /a/<prefixo-do-e-mail> transformaria a página num verificador de "fulano
+  // tem conta aqui?" pra quem soubesse o e-mail alheio.
+  //
+  // "Nenhum serviço" e "nenhum serviço ativo" são casos diferentes de
+  // propósito: quem cadastrou e depois desligou tudo é prestador de verdade
+  // com a agenda temporariamente fechada, e merece a tela que diz isso — não
+  // um 404 que faz o cliente achar que errou o link.
   .handler(async ({ data }): Promise<AgendaPublica | null> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -86,13 +109,25 @@ export const carregarAgendaPublica = createServerFn({ method: "GET" })
     const [{ data: servicos }, { data: regras }] = await Promise.all([
       supabaseAdmin
         .from("services")
-        .select("id, name, description, duration_minutes, price_cents")
+        .select("id, name, description, duration_minutes, price_cents, active")
         .eq("provider_id", provider.id)
-        .eq("active", true)
         .order("sort_order")
         .order("name"),
       supabaseAdmin.from("availability_rules").select("weekday").eq("provider_id", provider.id),
     ]);
+
+    // Nunca cadastrou serviço: a página não existe. Ver o comentário acima.
+    if ((servicos ?? []).length === 0) return null;
+
+    const ativos = (servicos ?? [])
+      .filter((s) => s.active)
+      .map(({ id, name, description, duration_minutes, price_cents }) => ({
+        id,
+        name,
+        description,
+        duration_minutes,
+        price_cents,
+      }));
 
     const janela = janelaDeAgendamento(
       { timeZone: provider.timezone, maxDaysAhead: provider.max_days_ahead },
@@ -104,8 +139,11 @@ export const carregarAgendaPublica = createServerFn({ method: "GET" })
       displayName: provider.display_name,
       headline: provider.headline,
       timeZone: provider.timezone,
-      accepting: provider.accepting,
-      servicos: servicos ?? [],
+      // Todos os serviços desligados é agenda fechada na prática: sem isto, a
+      // tela abriria no passo "escolha o serviço" com uma lista vazia e nada
+      // pra clicar.
+      accepting: provider.accepting && ativos.length > 0,
+      servicos: ativos,
       diasDisponiveis: diasComExpediente(
         (regras ?? []).map((r) => ({ weekday: r.weekday, starts_at: "00:00", ends_at: "23:59" })),
         janela.primeiroDia,
@@ -223,7 +261,7 @@ export const confirmarAgendamento = createServerFn({ method: "POST" })
       throw new ErroDeAgenda("Não foi possível concluir o agendamento. Tente de novo.");
     }
 
-    const linkDeGestao = `${urlPublica()}/agendamento/${criado.manage_token}`;
+    const { linkDeGestao } = await import("@/agenda/lib/url.server");
     const { emailDeConfirmacao, emailDeNovoAgendamento, anexoDoEvento, enviarEmail } =
       await import("@/agenda/lib/email.server");
 
@@ -234,9 +272,10 @@ export const confirmarAgendamento = createServerFn({ method: "POST" })
       precoCentavos: contexto.servico.price_cents,
       clienteNome: data.nome,
       clienteEmail: data.email,
+      clienteTelefone: data.telefone || null,
       inicio: new Date(criado.starts_at),
       timeZone: contexto.provider.timezone,
-      linkDeGestao,
+      linkDeGestao: linkDeGestao(criado.manage_token),
       observacao: data.observacao ?? null,
     };
 
@@ -285,6 +324,17 @@ export const confirmarAgendamento = createServerFn({ method: "POST" })
 
 export type AgendamentoDoCliente = {
   token: string;
+  /**
+   * Identificador do evento no calendário de quem recebeu.
+   *
+   * Vem do servidor porque tem de ser o mesmo em toda saída deste agendamento:
+   * o botão "salvar no calendário" da tela, o convite anexado à confirmação e
+   * o feed que o prestador assina. Montar um UID a partir do manage_token na
+   * tela — que foi o que esteve aqui — cria um segundo evento, com outro
+   * identificador: o .ics de cancelamento não o encontra pra apagar, e quem
+   * usasse os dois caminhos ficava com o compromisso duplicado no aparelho.
+   */
+  uid: string;
   servico: string;
   prestador: string;
   prestadorSlug: string;
@@ -312,7 +362,7 @@ export const carregarAgendamento = createServerFn({ method: "GET" })
     const { data: linha, error } = await supabaseAdmin
       .from("appointments")
       .select(
-        `manage_token, starts_at, ends_at, status, client_name, notes,
+        `id, manage_token, starts_at, ends_at, status, client_name, notes,
          services ( name, duration_minutes, price_cents ),
          providers ( display_name, slug, timezone )`,
       )
@@ -331,6 +381,7 @@ export const carregarAgendamento = createServerFn({ method: "GET" })
 
     return {
       token: linha.manage_token,
+      uid: uidDoAgendamento(linha.id),
       servico: servico.name,
       prestador: prestador.display_name,
       prestadorSlug: prestador.slug,
@@ -354,7 +405,7 @@ export const cancelarPeloCliente = createServerFn({ method: "POST" })
     const { data: linha } = await supabaseAdmin
       .from("appointments")
       .select(
-        `id, starts_at, ends_at, status, client_name, client_email, notes,
+        `id, starts_at, ends_at, status, client_name, client_email, client_phone, notes,
          services ( name, duration_minutes, price_cents ),
          providers ( display_name, timezone, contact_email )`,
       )
@@ -388,6 +439,7 @@ export const cancelarPeloCliente = createServerFn({ method: "POST" })
     const prestador = umDe(linha.providers);
     if (!servico || !prestador) return { ok: true };
 
+    const { linkDeGestao } = await import("@/agenda/lib/url.server");
     const { emailDeCancelamento, anexoDoEvento, enviarEmail } = await import("@/agenda/lib/email.server");
 
     const dadosDoEmail = {
@@ -397,9 +449,10 @@ export const cancelarPeloCliente = createServerFn({ method: "POST" })
       precoCentavos: servico.price_cents,
       clienteNome: linha.client_name,
       clienteEmail: linha.client_email,
+      clienteTelefone: linha.client_phone,
       inicio: new Date(linha.starts_at),
       timeZone: prestador.timezone,
-      linkDeGestao: `${urlPublica()}/agendamento/${data.token}`,
+      linkDeGestao: linkDeGestao(data.token),
       observacao: linha.notes,
     };
 

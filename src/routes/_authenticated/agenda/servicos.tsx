@@ -5,8 +5,8 @@ import { Pencil, Plus, Scissors } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 import { AgendaTabs } from "@/agenda/components/agenda-tabs";
+import { Campo, entrada } from "@/agenda/components/campo";
 import { AppShell } from "@/components/AppShell";
 import {
   Dialog,
@@ -21,38 +21,18 @@ import { Switch } from "@/components/ui/switch";
 import { useProvider } from "@/agenda/hooks/use-provider";
 import { supabase } from "@/integrations/supabase/client";
 import type { Service } from "@/integrations/supabase/types";
-import { formatarDuracao, formatarPreco } from "@/agenda/lib/validation";
+import {
+  centavosDoPreco,
+  formatarDuracao,
+  formatarPreco,
+  servicoSchema,
+  type ServicoEmEdicao,
+} from "@/agenda/lib/validation";
 
 export const Route = createFileRoute("/_authenticated/agenda/servicos")({
   head: () => ({ meta: [{ title: "Serviços — Almoxá" }] }),
   component: PaginaDeServicos,
 });
-
-/**
- * O preço aparece em reais na tela e é guardado em centavos no banco. A
- * conversão mora só aqui e no envio; o resto do app lida com centavos.
- */
-const formSchema = z.object({
-  name: z.string().trim().min(2, { message: "Dê um nome ao serviço" }).max(120),
-  description: z.string().trim().max(600).optional(),
-  duration_minutes: z.coerce
-    .number()
-    .int({ message: "Use minutos inteiros" })
-    .min(5, { message: "No mínimo 5 minutos" })
-    .max(1440, { message: "No máximo 24 horas" }),
-  preco: z
-    .string()
-    .trim()
-    .refine((v) => v === "" || !Number.isNaN(Number(v.replace(",", "."))), {
-      message: "Use um número, como 49,90",
-    })
-    .refine((v) => v === "" || Number(v.replace(",", ".")) >= 0, {
-      message: "O preço não pode ser negativo",
-    }),
-  active: z.boolean(),
-});
-
-type FormValues = z.input<typeof formSchema>;
 
 function PaginaDeServicos() {
   const provider = useProvider();
@@ -201,8 +181,8 @@ function DialogoDeServico({
     watch,
     setValue,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  } = useForm<ServicoEmEdicao>({
+    resolver: zodResolver(servicoSchema),
     // A chave do <Dialog> abaixo remonta o formulário a cada abertura, então
     // os defaults são reavaliados com o serviço certo — sem isso, abrir a
     // edição depois de criar traria o formulário anterior preenchido.
@@ -217,16 +197,13 @@ function DialogoDeServico({
   });
 
   const salvar = useMutation({
-    mutationFn: async (valores: FormValues) => {
-      const dados = formSchema.parse(valores);
-      const price_cents =
-        dados.preco === "" ? null : Math.round(Number(dados.preco.replace(",", ".")) * 100);
-
+    mutationFn: async (valores: ServicoEmEdicao) => {
+      const dados = servicoSchema.parse(valores);
       const payload = {
         name: dados.name,
         description: dados.description || null,
         duration_minutes: dados.duration_minutes,
-        price_cents,
+        price_cents: centavosDoPreco(dados.preco),
         active: dados.active,
       };
 
@@ -345,38 +322,5 @@ function DialogoDeServico({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-const entrada =
-  "mt-1.5 w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring";
-
-function Campo({
-  id,
-  rotulo,
-  dica,
-  erro,
-  children,
-}: {
-  id: string;
-  rotulo: string;
-  dica?: string;
-  erro?: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="label-caps">
-        {rotulo}
-      </label>
-      {children}
-      {erro ? (
-        <p role="alert" className="mt-1.5 text-xs text-destructive">
-          {erro}
-        </p>
-      ) : dica ? (
-        <p className="mt-1.5 text-xs text-muted-foreground">{dica}</p>
-      ) : null}
-    </div>
   );
 }

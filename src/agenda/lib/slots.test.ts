@@ -158,6 +158,51 @@ describe("gerarHorariosDoDia", () => {
     );
     expect(horarios.map((h) => h.rotulo)).toEqual(["09:00", "10:00", "11:00"]);
   });
+
+  // A confirmação refaz a grade e só aceita um começo que esteja nela. Se a
+  // grade existir fora da janela, um POST montado na mão marca um horário em
+  // qualquer data — e a constraint do banco trava aquele instante pra sempre.
+  it("não gera grade depois de max_days_ahead", () => {
+    const entradaLonge = entrada({
+      // Terça, 371 dias depois de 2026-09-01 — muito além dos 60 do padrão.
+      isoDate: "2027-09-07",
+      config: { ...config, maxDaysAhead: 60 },
+    });
+    expect(gerarHorariosDoDia(entradaLonge)).toEqual([]);
+  });
+
+  it("aceita o último dia da janela e recusa o seguinte", () => {
+    // 2026-09-01 + 60 dias = 2026-10-31 (sábado). A terça de dentro da janela
+    // é 2026-10-27; a primeira de fora, 2026-11-03.
+    const dentro = gerarHorariosDoDia(entrada({ isoDate: "2026-10-27" }));
+    expect(dentro.map((h) => h.rotulo)).toEqual([
+      "09:00",
+      "09:30",
+      "10:00",
+      "10:30",
+      "11:00",
+      "11:30",
+    ]);
+    expect(gerarHorariosDoDia(entrada({ isoDate: "2026-11-03" }))).toEqual([]);
+  });
+
+  it("não gera grade em dia que já passou", () => {
+    // Terça anterior ao "agora" do teste.
+    expect(gerarHorariosDoDia(entrada({ isoDate: "2026-08-25" }))).toEqual([]);
+  });
+
+  it("mede a janela pelo dia local do prestador, não pelo do servidor", () => {
+    // 02:00 UTC do dia 1º ainda é 31 de agosto em São Paulo, então a janela de
+    // 1 dia vai de 31/08 a 01/09 — e a terça 01/09 continua valendo.
+    const horarios = gerarHorariosDoDia(
+      entrada({
+        isoDate: "2026-09-01",
+        agora: new Date("2026-09-01T02:00:00Z"),
+        config: { ...config, maxDaysAhead: 1 },
+      }),
+    );
+    expect(horarios.length).toBeGreaterThan(0);
+  });
 });
 
 describe("janelaDeAgendamento", () => {

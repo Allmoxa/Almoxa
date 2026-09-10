@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { deveEnviarAgora, tetoDaConsultaMs } from "@/agenda/lib/lembretes";
+import { deveEnviarAgora, tetoDaConsultaMs, textoDeAntecedencia } from "@/agenda/lib/lembretes";
 
 /**
  * Disparo dos lembretes por e-mail.
@@ -62,6 +62,7 @@ export const Route = createFileRoute("/api/cron/lembretes")({
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { emailDeLembrete, enviarEmail } = await import("@/agenda/lib/email.server");
+        const { linkDeGestao } = await import("@/agenda/lib/url.server");
 
         const agora = new Date();
         const tetoDaJanela = new Date(
@@ -92,11 +93,6 @@ export const Route = createFileRoute("/api/cron/lembretes")({
           return Response.json({ erro: "Falha na consulta" }, { status: 500 });
         }
 
-        const base = (process.env["AGENDA_PUBLIC_URL"] ?? "http://localhost:8081").replace(
-          /\/+$/,
-          "",
-        );
-
         let enviados = 0;
         let pulados = 0;
 
@@ -116,6 +112,7 @@ export const Route = createFileRoute("/api/cron/lembretes")({
             continue;
           }
 
+          const inicio = new Date(linha.starts_at);
           const lembrete = emailDeLembrete(
             {
               prestador: prestador.display_name,
@@ -124,12 +121,14 @@ export const Route = createFileRoute("/api/cron/lembretes")({
               precoCentavos: servico.price_cents,
               clienteNome: linha.client_name,
               clienteEmail: linha.client_email,
-              inicio: new Date(linha.starts_at),
+              inicio,
               timeZone: prestador.timezone,
-              linkDeGestao: `${base}/agendamento/${linha.manage_token}`,
+              linkDeGestao: linkDeGestao(linha.manage_token),
               observacao: linha.notes,
             },
-            prestador.reminder_hours,
+            // Do tempo que falta de verdade, no calendário do prestador — não
+            // do reminder_hours dele. Ver textoDeAntecedencia.
+            textoDeAntecedencia(inicio, agora, prestador.timezone),
           );
 
           const ok = await enviarEmail({

@@ -1,16 +1,32 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { CalendarOff, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import type { z } from "zod";
 import { AgendaTabs } from "@/agenda/components/agenda-tabs";
+import { Campo, entrada } from "@/agenda/components/campo";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { useProvider } from "@/agenda/hooks/use-provider";
 import { supabase } from "@/integrations/supabase/client";
-import type { AvailabilityBlock, AvailabilityRule } from "@/integrations/supabase/types";
+import type { AvailabilityBlock, AvailabilityRule, Provider } from "@/integrations/supabase/types";
 import { completo } from "@/agenda/lib/formato";
-import { isoDateTimeToInstant, minutesOfDay } from "@/agenda/lib/timezone";
+import { addDaysToIsoDate, isoDateTimeToInstant } from "@/agenda/lib/timezone";
+import { bloqueioSchema, regraSchema, reguaSchema, type Regua } from "@/agenda/lib/validation";
+
+/**
+ * Primeira mensagem de um schema que não passou.
+ *
+ * Estes formulários não são react-hook-form (são campos soltos com useState),
+ * então o erro do zod chega cru no `toast` — e `ZodError.message` é um JSON
+ * inteiro, ilegível pra quem está olhando a tela.
+ */
+function mensagemDoErro(erro: z.ZodError, padrao: string): string {
+  return erro.issues[0]?.message ?? padrao;
+}
 
 export const Route = createFileRoute("/_authenticated/agenda/disponibilidade")({
   head: () => ({ meta: [{ title: "Disponibilidade — Almoxá" }] }),
@@ -50,9 +66,224 @@ function PaginaDeDisponibilidade() {
         <div className="space-y-10">
           <Expediente providerId={provider.data.id} />
           <Bloqueios providerId={provider.data.id} timeZone={timeZone} />
+          <ReguaDeAgendamento provider={provider.data} />
         </div>
       )}
     </AppShell>
+  );
+}
+
+/** Fusos do Brasil, do mais usado pro menos. Cobre a quase totalidade das contas. */
+const FUSOS = [
+  { valor: "America/Sao_Paulo", nome: "Brasília (São Paulo, Rio, Sul, Nordeste)" },
+  { valor: "America/Manaus", nome: "Manaus (Amazonas, Roraima, Rondônia)" },
+  { valor: "America/Cuiaba", nome: "Cuiabá (Mato Grosso)" },
+  { valor: "America/Campo_Grande", nome: "Campo Grande (Mato Grosso do Sul)" },
+  { valor: "America/Belem", nome: "Belém (Pará, Amapá)" },
+  { valor: "America/Fortaleza", nome: "Fortaleza (Ceará, Piauí, Maranhão)" },
+  { valor: "America/Recife", nome: "Recife (Pernambuco, Paraíba, Alagoas)" },
+  { valor: "America/Bahia", nome: "Salvador (Bahia)" },
+  { valor: "America/Porto_Velho", nome: "Porto Velho (Rondônia)" },
+  { valor: "America/Boa_Vista", nome: "Boa Vista (Roraima)" },
+  { valor: "America/Rio_Branco", nome: "Rio Branco (Acre)" },
+  { valor: "America/Noronha", nome: "Fernando de Noronha" },
+  { valor: "America/Lisbon", nome: "Lisboa" },
+] as const;
+
+/**
+ * Os números que decidem a grade de horários.
+ *
+ * Não havia tela nenhuma pra isto: o prestador ficava com o que a migration
+ * pôs de padrão — fuso de São Paulo, passo de 30 minutos, 2 horas de
+ * antecedência, 60 dias de janela, lembrete 24h antes. Quem atende em Manaus
+ * via a agenda inteira uma hora fora do lugar, sem nada a fazer a respeito.
+ *
+ * Fica nesta tela porque é a continuação natural de "quando eu atendo": o
+ * expediente diz em que faixa, isto diz de quanto em quanto e com quanta
+ * antecedência.
+ */
+function ReguaDeAgendamento({ provider }: { provider: Provider }) {
+  const queryClient = useQueryClient();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<Regua>({
+    resolver: zodResolver(reguaSchema),
+    defaultValues: {
+      timezone: provider.timezone,
+      slot_interval_minutes: provider.slot_interval_minutes,
+      min_notice_minutes: provider.min_notice_minutes,
+      max_days_ahead: provider.max_days_ahead,
+      buffer_minutes: provider.buffer_minutes,
+      reminder_hours: provider.reminder_hours,
+    },
+  });
+
+  const salvar = useMutation({
+    mutationFn: async (valores: Regua) => {
+      const dados = reguaSchema.parse(valores);
+      const { error } = await supabase.from("providers").update(dados).eq("id", provider.id);
+      if (error) throw error;
+      return dados;
+    },
+    onSuccess: (dados) => {
+      toast.success("Régua atualizada.");
+      reset(dados);
+      void queryClient.invalidateQueries({ queryKey: ["provider"] });
+      // A grade pública sai destes números; o que estiver em cache na tela do
+      // prestador descreve a régua antiga.
+      void queryClient.invalidateQueries({ queryKey: ["agendamentos"] });
+    },
+    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+  });
+
+  // Fuso fora da lista (conta antiga, ou cadastro feito à mão) não pode sumir
+  // do select: seria trocado em silêncio pelo primeiro da lista ao salvar.
+  const fusos = FUSOS.some((f) => f.valor === provider.timezone)
+    ? FUSOS
+    : [{ valor: provider.timezone, nome: provider.timezone.replace(/_/g, " ") }, ...FUSOS];
+
+  return (
+    <section>
+      <h2 className="text-xl">Régua de agendamento</h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        De quanto em quanto tempo começa um horário, e com quanta antecedência o
+        cliente pode marcar.
+      </p>
+
+      <form
+        onSubmit={handleSubmit((v) => salvar.mutate(v))}
+        className="paper-panel mt-5 space-y-4 p-4"
+        noValidate
+      >
+        <Campo
+          id="timezone"
+          rotulo="Fuso horário"
+          dica="Todo horário da agenda é lido neste fuso."
+          erro={errors.timezone?.message}
+        >
+          <select
+            id="timezone"
+            aria-invalid={!!errors.timezone}
+            {...register("timezone")}
+            className={entrada}
+          >
+            {fusos.map((fuso) => (
+              <option key={fuso.valor} value={fuso.valor}>
+                {fuso.nome}
+              </option>
+            ))}
+          </select>
+        </Campo>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo
+            id="slot_interval_minutes"
+            rotulo="Passo da grade (min)"
+            dica="30 oferece 09:00, 09:30, 10:00…"
+            erro={errors.slot_interval_minutes?.message}
+          >
+            <input
+              id="slot_interval_minutes"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={240}
+              step={5}
+              aria-invalid={!!errors.slot_interval_minutes}
+              {...register("slot_interval_minutes")}
+              className={entrada}
+            />
+          </Campo>
+
+          <Campo
+            id="buffer_minutes"
+            rotulo="Descanso entre atendimentos (min)"
+            dica="Tempo livre antes e depois de cada horário marcado."
+            erro={errors.buffer_minutes?.message}
+          >
+            <input
+              id="buffer_minutes"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={240}
+              step={5}
+              aria-invalid={!!errors.buffer_minutes}
+              {...register("buffer_minutes")}
+              className={entrada}
+            />
+          </Campo>
+
+          <Campo
+            id="min_notice_minutes"
+            rotulo="Antecedência mínima (min)"
+            dica="120 = ninguém marca para daqui a menos de 2 horas."
+            erro={errors.min_notice_minutes?.message}
+          >
+            <input
+              id="min_notice_minutes"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={20160}
+              step={15}
+              aria-invalid={!!errors.min_notice_minutes}
+              {...register("min_notice_minutes")}
+              className={entrada}
+            />
+          </Campo>
+
+          <Campo
+            id="max_days_ahead"
+            rotulo="Janela (dias)"
+            dica="Até quantos dias à frente o cliente pode marcar."
+            erro={errors.max_days_ahead?.message}
+          >
+            <input
+              id="max_days_ahead"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={365}
+              aria-invalid={!!errors.max_days_ahead}
+              {...register("max_days_ahead")}
+              className={entrada}
+            />
+          </Campo>
+        </div>
+
+        <Campo
+          id="reminder_hours"
+          rotulo="Lembrete (horas antes)"
+          dica="0 desliga o lembrete por e-mail."
+          erro={errors.reminder_hours?.message}
+        >
+          <input
+            id="reminder_hours"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={168}
+            aria-invalid={!!errors.reminder_hours}
+            {...register("reminder_hours")}
+            className={entrada}
+          />
+        </Campo>
+
+        <button
+          type="submit"
+          disabled={salvar.isPending || !isDirty}
+          className="flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {salvar.isPending ? <BoxSpinner size={16} /> : null}
+          {salvar.isPending ? "Salvando…" : "Salvar"}
+        </button>
+      </form>
+    </section>
   );
 }
 
@@ -85,14 +316,21 @@ function Expediente({ providerId }: { providerId: string }) {
 
   const adicionar = useMutation({
     mutationFn: async ({ weekday }: { weekday: number }) => {
-      if (minutesOfDay(novoFim) <= minutesOfDay(novoInicio)) {
-        throw new Error("O fim tem que ser depois do começo.");
-      }
-      const { error } = await supabase.from("availability_rules").insert({
-        provider_id: providerId,
+      // O mesmo schema que descreve a regra no resto do app: hora no formato
+      // certo e fim depois do começo. Checar na mão aqui era a porta pra os
+      // dois lados discordarem.
+      const validada = regraSchema.safeParse({
         weekday,
         starts_at: novoInicio,
         ends_at: novoFim,
+      });
+      if (!validada.success) {
+        throw new Error(mensagemDoErro(validada.error, "Faixa inválida."));
+      }
+
+      const { error } = await supabase.from("availability_rules").insert({
+        provider_id: providerId,
+        ...validada.data,
       });
       // 23505 é a UNIQUE (provider_id, weekday, starts_at, ends_at).
       if (error?.code === "23505") throw new Error("Essa faixa já existe nesse dia.");
@@ -250,18 +488,32 @@ function Bloqueios({ providerId, timeZone }: { providerId: string; timeZone: str
   const criar = useMutation({
     mutationFn: async () => {
       if (!dia) throw new Error("Escolha o dia.");
-      if (!diaInteiro && minutesOfDay(fim) <= minutesOfDay(inicio)) {
-        throw new Error("O fim tem que ser depois do começo.");
+
+      const validado = bloqueioSchema.safeParse({
+        dia,
+        diaInteiro,
+        starts_at: diaInteiro ? undefined : inicio,
+        ends_at: diaInteiro ? undefined : fim,
+        reason: motivo.trim() || undefined,
+      });
+      if (!validado.success) {
+        throw new Error(mensagemDoErro(validado.error, "Bloqueio inválido."));
       }
 
-      const de = isoDateTimeToInstant(dia, diaInteiro ? "00:00" : inicio, timeZone);
-      const ate = isoDateTimeToInstant(dia, diaInteiro ? "23:59" : fim, timeZone);
+      const de = isoDateTimeToInstant(dia, validado.data.starts_at ?? "00:00", timeZone);
+      // Dia inteiro termina na meia-noite do dia seguinte, não às 23:59: o
+      // bloqueio é meio aberto [de, até), e parar às 23:59 deixava o último
+      // minuto do dia de fora — um atendimento que começasse ali passava por
+      // cima da folga.
+      const ate = validado.data.diaInteiro
+        ? isoDateTimeToInstant(addDaysToIsoDate(dia, 1), "00:00", timeZone)
+        : isoDateTimeToInstant(dia, validado.data.ends_at ?? "23:59", timeZone);
 
       const { error } = await supabase.from("availability_blocks").insert({
         provider_id: providerId,
         starts_at: de.toISOString(),
         ends_at: ate.toISOString(),
-        reason: motivo.trim() || null,
+        reason: validado.data.reason ?? null,
       });
       if (error) throw error;
     },

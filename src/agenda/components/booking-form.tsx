@@ -1,7 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { Campo, entrada } from "@/agenda/components/campo";
 import { BoxSpinner } from "@/components/ui/box-spinner";
-import { dadosDoClienteSchema, type DadosDoCliente } from "@/agenda/lib/validation";
+import {
+  formularioDoClienteSchema,
+  type FormularioDoCliente,
+} from "@/agenda/lib/validation";
 
 /**
  * Última etapa: quem é você.
@@ -18,13 +22,13 @@ export function BookingForm({
   onEnviar,
 }: {
   enviando: boolean;
-  onEnviar: (dados: DadosDoCliente & { website?: string }) => void;
+  onEnviar: (dados: FormularioDoCliente) => void;
 }) {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<DadosDoCliente>({ resolver: zodResolver(dadosDoClienteSchema) });
+  } = useForm<FormularioDoCliente>({ resolver: zodResolver(formularioDoClienteSchema) });
 
   return (
     <form onSubmit={handleSubmit(onEnviar)} className="space-y-4" noValidate>
@@ -90,10 +94,28 @@ export function BookingForm({
       </Campo>
 
       {/* Honeypot. Fora da tela e fora da ordem de tabulação: quem preenche é
-          bot. O servidor devolve sucesso sem gravar nada. */}
+          bot. O servidor devolve sucesso sem gravar nada.
+
+          O `register` não é detalhe: sem ele o react-hook-form não recolhe o
+          campo (só entrega o que foi registrado) e o zod descartaria a chave
+          por não estar no schema. O honeypot chegava sempre vazio ao servidor,
+          e o ramo que trata bot era código morto. */}
       <div aria-hidden="true" className="absolute left-[-9999px] h-px w-px overflow-hidden">
         <label htmlFor="website">Não preencha este campo</label>
-        <input id="website" type="text" tabIndex={-1} autoComplete="off" name="website" />
+        {/* Os data-* são o opt-out documentado do 1Password e do LastPass.
+            "website" é nome que gerenciador de senha gosta de preencher
+            sozinho — e, agora que o campo chega ao servidor, um preenchimento
+            desses descartaria o agendamento de alguém de verdade sem gravar
+            nada e sem ninguém ficar sabendo. */}
+        <input
+          id="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          {...register("website")}
+        />
       </div>
 
       <button
@@ -105,40 +127,5 @@ export function BookingForm({
         {enviando ? "Confirmando…" : "Confirmar agendamento"}
       </button>
     </form>
-  );
-}
-
-const entrada =
-  "mt-1.5 w-full rounded-md border border-input bg-card px-3 py-2.5 text-sm outline-none transition-colors focus:border-ring aria-[invalid=true]:border-destructive";
-
-function Campo({
-  id,
-  rotulo,
-  dica,
-  erro,
-  children,
-}: {
-  id: string;
-  rotulo: string;
-  dica?: string;
-  erro?: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label htmlFor={id} className="label-caps">
-        {rotulo}
-      </label>
-      {children}
-      {erro ? (
-        // role="alert" faz o leitor de tela anunciar o erro na hora em que ele
-        // aparece, sem precisar navegar de volta até o campo.
-        <p role="alert" className="mt-1.5 text-xs text-destructive">
-          {erro}
-        </p>
-      ) : dica ? (
-        <p className="mt-1.5 text-xs text-muted-foreground">{dica}</p>
-      ) : null}
-    </div>
   );
 }

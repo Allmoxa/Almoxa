@@ -21,6 +21,7 @@ export type DadosDoEmail = {
   precoCentavos: number | null;
   clienteNome: string;
   clienteEmail: string;
+  clienteTelefone?: string | null | undefined;
   inicio: Date;
   timeZone: string;
   linkDeGestao: string;
@@ -144,8 +145,14 @@ export function emailDeConfirmacao(dados: DadosDoEmail) {
   };
 }
 
-export function emailDeLembrete(dados: DadosDoEmail, horasAntes: number) {
-  const quando = horasAntes >= 24 ? "amanhã" : `em cerca de ${horasAntes}h`;
+/**
+ * @param quando como o texto se refere ao horário ("amanhã", "em 2 dias").
+ *   Vem pronto de `textoDeAntecedencia`, calculado sobre o tempo que falta de
+ *   verdade — e não sobre o `reminder_hours` do prestador, que é só a intenção
+ *   dele. Com cron diário os dois divergem, e este e-mail é o único lugar onde
+ *   a diferença aparece pra quem lê.
+ */
+export function emailDeLembrete(dados: DadosDoEmail, quando: string) {
   const corpo = `
     <p style="margin:0 0 18px;font-size:15px;line-height:1.6">Passando pra lembrar do seu horário ${esc(quando)}.</p>
     ${tabelaDoAgendamento(dados)}
@@ -185,7 +192,9 @@ export function emailDeCancelamento(dados: DadosDoEmail, porQuem: "cliente" | "p
 
 /** Aviso pro prestador de que entrou gente nova na agenda. */
 export function emailDeNovoAgendamento(dados: DadosDoEmail) {
-  const contato = [dados.clienteEmail, dados.observacao ? null : null].filter(Boolean).join(" · ");
+  // O telefone é opcional no formulário; quando vem, é o jeito mais rápido de
+  // o prestador falar com quem marcou, e este e-mail é onde ele olha primeiro.
+  const contato = [dados.clienteEmail, dados.clienteTelefone].filter(Boolean).join(" · ");
   const corpo = `
     <p style="margin:0 0 18px;font-size:15px;line-height:1.6"><strong>${esc(dados.clienteNome)}</strong> marcou um horário com você.</p>
     ${tabelaDoAgendamento(dados)}
@@ -196,7 +205,7 @@ export function emailDeNovoAgendamento(dados: DadosDoEmail) {
   return {
     subject: `Novo agendamento: ${dados.clienteNome} — ${porExtenso(dados.inicio, dados.timeZone)}`,
     html: moldura("Entrou na sua agenda", "Novo agendamento", corpo, "Almoxá Agenda"),
-    text: `${dados.clienteNome} marcou um horário.\n\n${blocoTexto(dados)}\nContato: ${dados.clienteEmail}\n`,
+    text: `${dados.clienteNome} marcou um horário.\n\n${blocoTexto(dados)}\nContato: ${contato}\n`,
   };
 }
 

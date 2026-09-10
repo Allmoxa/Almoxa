@@ -15,10 +15,6 @@ import { uidDoAgendamento } from "@/agenda/lib/booking.functions";
 
 class ErroDeAgenda extends Error {}
 
-function urlPublica(): string {
-  return (process.env["AGENDA_PUBLIC_URL"] ?? "http://localhost:8081").replace(/\/+$/, "");
-}
-
 /**
  * Cancela pelo lado do prestador e avisa o cliente.
  *
@@ -35,7 +31,7 @@ export const cancelarPeloPrestador = createServerFn({ method: "POST" })
     const { data: linha } = await supabaseAdmin
       .from("appointments")
       .select(
-        `id, starts_at, ends_at, status, client_name, client_email, notes, manage_token,
+        `id, starts_at, ends_at, status, client_name, client_email, client_phone, notes, manage_token,
          services ( name, duration_minutes, price_cents ),
          providers ( user_id, display_name, timezone, contact_email )`,
       )
@@ -68,6 +64,7 @@ export const cancelarPeloPrestador = createServerFn({ method: "POST" })
     const servico = umDe(linha.services);
     if (!servico) return { ok: true };
 
+    const { linkDeGestao } = await import("@/agenda/lib/url.server");
     const { emailDeCancelamento, anexoDoEvento, enviarEmail } = await import("@/agenda/lib/email.server");
 
     const dadosDoEmail = {
@@ -77,9 +74,10 @@ export const cancelarPeloPrestador = createServerFn({ method: "POST" })
       precoCentavos: servico.price_cents,
       clienteNome: linha.client_name,
       clienteEmail: linha.client_email,
+      clienteTelefone: linha.client_phone,
       inicio: new Date(linha.starts_at),
       timeZone: prestador.timezone,
-      linkDeGestao: `${urlPublica()}/agendamento/${linha.manage_token}`,
+      linkDeGestao: linkDeGestao(linha.manage_token),
       observacao: linha.notes,
     };
 
@@ -121,7 +119,10 @@ export const girarTokenDoCalendario = createServerFn({ method: "POST" })
 
 /** Endereço público da agenda, pro prestador copiar e mandar pro cliente. */
 export const lerUrlPublica = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ base: string }> => ({ base: urlPublica() }),
+  async (): Promise<{ base: string }> => {
+    const { urlPublica } = await import("@/agenda/lib/url.server");
+    return { base: urlPublica() };
+  },
 );
 
 function umDe<T>(valor: T | T[] | null): T | null {

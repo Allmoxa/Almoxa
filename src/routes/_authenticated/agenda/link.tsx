@@ -1,16 +1,20 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Apple, Check, Copy, ExternalLink, RefreshCw, Smartphone } from "lucide-react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { AgendaTabs } from "@/agenda/components/agenda-tabs";
+import { Campo, entrada } from "@/agenda/components/campo";
 import { AppShell } from "@/components/AppShell";
 import { BoxSpinner } from "@/components/ui/box-spinner";
 import { Switch } from "@/components/ui/switch";
 import { useProvider } from "@/agenda/hooks/use-provider";
 import { supabase } from "@/integrations/supabase/client";
+import type { Provider } from "@/integrations/supabase/types";
 import { girarTokenDoCalendario, lerUrlPublica } from "@/agenda/lib/provider.functions";
-import { slugSchema } from "@/agenda/lib/validation";
+import { identidadeSchema, slugSchema, type Identidade } from "@/agenda/lib/validation";
 
 export const Route = createFileRoute("/_authenticated/agenda/link")({
   head: () => ({ meta: [{ title: "Seu link — Almoxá" }] }),
@@ -61,6 +65,10 @@ function PaginaDoLink() {
     >
       <AgendaTabs />
       <div className="space-y-10">
+        <ComoVoceAparece
+          provider={provider.data}
+          onMudou={() => void queryClient.invalidateQueries({ queryKey: ["provider"] })}
+        />
         <LinkPublico
           providerId={provider.data.id}
           link={linkPublico}
@@ -71,6 +79,149 @@ function PaginaDoLink() {
         <Sincronizacao feed={feed} />
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * Nome, chamada e contato — o cabeçalho da página pública.
+ *
+ * Sem esta seção o prestador ficava preso ao que o gatilho do banco chutou no
+ * primeiro login: `display_name` saía do pedaço do e-mail antes do "@", então
+ * quem se cadastrou como "contato.salao23" aparecia assim pro cliente, sem
+ * nenhuma tela pra corrigir.
+ *
+ * Fica aqui, e não junto da régua de horários, porque é tudo que o cliente lê
+ * antes de escolher — mesma tela do endereço público e da chave de aceitar
+ * agendamentos.
+ */
+function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: () => void }) {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isDirty },
+  } = useForm<Identidade>({
+    resolver: zodResolver(identidadeSchema),
+    defaultValues: {
+      display_name: provider.display_name,
+      headline: provider.headline ?? "",
+      contact_email: provider.contact_email ?? "",
+      phone: provider.phone ?? "",
+    },
+  });
+
+  const salvar = useMutation({
+    mutationFn: async (valores: Identidade) => {
+      const dados = identidadeSchema.parse(valores);
+      const { error } = await supabase
+        .from("providers")
+        .update({
+          display_name: dados.display_name,
+          // Campo vazio é "não tenho", que no banco é NULL — string vazia
+          // passaria pelo CHECK e viraria uma linha em branco no e-mail.
+          headline: dados.headline?.trim() || null,
+          contact_email: dados.contact_email?.trim() || null,
+          phone: dados.phone?.trim() || null,
+        })
+        .eq("id", provider.id);
+      if (error) throw error;
+      return dados;
+    },
+    onSuccess: (dados) => {
+      toast.success("Dados atualizados.");
+      // reset com o que foi gravado zera o isDirty; sem isso o botão continua
+      // habilitado sugerindo que ficou coisa por salvar.
+      reset(dados);
+      onMudou();
+    },
+    onError: (erro: Error) => toast.error(erro.message || "Não foi possível salvar."),
+  });
+
+  return (
+    <section>
+      <h2 className="text-xl">Como você aparece</h2>
+      <p className="mt-1.5 text-sm text-muted-foreground">
+        O que o cliente lê no topo da sua página, antes de escolher o horário.
+      </p>
+
+      <form
+        onSubmit={handleSubmit((v) => salvar.mutate(v))}
+        className="paper-panel mt-5 space-y-4 p-4"
+        noValidate
+      >
+        <Campo id="display_name" rotulo="Nome" erro={errors.display_name?.message}>
+          <input
+            id="display_name"
+            type="text"
+            autoComplete="organization"
+            aria-invalid={!!errors.display_name}
+            {...register("display_name")}
+            className={entrada}
+          />
+        </Campo>
+
+        <Campo
+          id="headline"
+          rotulo="Chamada"
+          dica="Opcional. Uma linha sobre o que você faz."
+          erro={errors.headline?.message}
+        >
+          <input
+            id="headline"
+            type="text"
+            placeholder="Corte e barba no centro, com hora marcada"
+            aria-invalid={!!errors.headline}
+            {...register("headline")}
+            className={entrada}
+          />
+        </Campo>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Campo
+            id="contact_email"
+            rotulo="E-mail de contato"
+            dica="Recebe o aviso de cada agendamento."
+            erro={errors.contact_email?.message}
+          >
+            <input
+              id="contact_email"
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              aria-invalid={!!errors.contact_email}
+              {...register("contact_email")}
+              className={entrada}
+            />
+          </Campo>
+
+          <Campo
+            id="phone"
+            rotulo="Telefone"
+            dica="Opcional."
+            erro={errors.phone?.message}
+          >
+            <input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              aria-invalid={!!errors.phone}
+              {...register("phone")}
+              className={entrada}
+            />
+          </Campo>
+        </div>
+
+        <button
+          type="submit"
+          disabled={salvar.isPending || !isDirty}
+          className="flex min-h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {salvar.isPending ? <BoxSpinner size={16} /> : null}
+          {salvar.isPending ? "Salvando…" : "Salvar"}
+        </button>
+      </form>
+    </section>
   );
 }
 

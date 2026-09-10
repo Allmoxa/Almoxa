@@ -73,6 +73,15 @@ export function gerarHorariosDoDia(entrada: EntradaDeHorarios): Horario[] {
 
   if (duracaoMinutos <= 0 || slotIntervalMinutes <= 0) return [];
 
+  // Fora da janela que o prestador abriu não existe grade — nem pra frente
+  // (max_days_ahead) nem pra trás. A tela já só oferece dias de dentro dela,
+  // mas quem decide de fato é este corte: a grade é recalculada na
+  // confirmação, e é nela que o servidor confere o horário que chegou por
+  // POST. Sem isto, um pedido montado na mão marca um horário em 2032 — e a
+  // constraint de exclusão trava aquele instante pra sempre.
+  const janela = janelaDeAgendamento(config, agora);
+  if (isoDate < janela.primeiroDia || isoDate > janela.ultimoDia) return [];
+
   const { year, month, day } = parseIsoDate(isoDate);
   const diaDaSemana = weekdayOfCalendarDate(year, month, day);
 

@@ -16,11 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { BoxSpinner } from "@/components/ui/box-spinner";
-import {
-  cancelarPeloCliente,
-  carregarAgendamento,
-  uidDoAgendamento,
-} from "@/agenda/lib/booking.functions";
+import { cancelarPeloCliente, carregarAgendamento } from "@/agenda/lib/booking.functions";
 import { completo, diaPorExtenso, hora } from "@/agenda/lib/formato";
 import { formatarDuracao, formatarPreco } from "@/agenda/lib/validation";
 
@@ -129,7 +125,7 @@ function Comprovante() {
           {!cancelado ? (
             <div className="ticket-perforation p-6 pt-5">
               <AddToCalendar
-                uid={uidDoAgendamento(agendamento.token)}
+                uid={agendamento.uid}
                 titulo={`${agendamento.servico} — ${agendamento.prestador}`}
                 descricao={`${agendamento.servico} com ${agendamento.prestador}.`}
                 inicio={inicio}

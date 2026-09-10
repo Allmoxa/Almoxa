@@ -17,7 +17,7 @@ import {
   type AgendaPublica,
 } from "@/agenda/lib/booking.functions";
 import { completo, diaPorExtenso, fusoDoNavegador, siglaDoFuso } from "@/agenda/lib/formato";
-import { formatarDuracao, formatarPreco, type DadosDoCliente } from "@/agenda/lib/validation";
+import { formatarDuracao, formatarPreco, type FormularioDoCliente } from "@/agenda/lib/validation";
 
 /**
  * Página pública de agendamento — o link que o cliente recebe.
@@ -89,7 +89,7 @@ function PaginaPublica() {
   });
 
   const confirmar = useMutation({
-    mutationFn: (dados: DadosDoCliente & { website?: string }) =>
+    mutationFn: (dados: FormularioDoCliente) =>
       confirmarAgendamento({
         data: {
           ...dados,
