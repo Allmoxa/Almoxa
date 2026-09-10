@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { CalendarDays } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -46,6 +47,9 @@ function AuthPage() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  // Vazia esconde o botao: quem roda so o Almoxa nao tem agenda pra onde ir.
+  const linkDaAgenda = import.meta.env["VITE_AGENDA_APP_URL"] as string | undefined;
 
   const {
     register,
@@ -200,6 +204,25 @@ function AuthPage() {
               Criar conta
             </Link>
           </p>
+
+          {/* A Agenda e o outro sistema, nao outro jeito de entrar aqui — por
+              isso vem separada pela regua, e nao junto do "Continuar com
+              Google". Quem chega nesta tela querendo marcar horario com alguem
+              nao tem conta nem precisa de uma. */}
+          {linkDaAgenda ? (
+            <div className="rule-top mt-8 pt-6">
+              <a
+                href={linkDaAgenda}
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:bg-secondary"
+              >
+                <CalendarDays className="size-4" />
+                Ir para a Almoxá Agenda
+              </a>
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Agendamento de serviços. O mesmo login vale para os dois.
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
 
