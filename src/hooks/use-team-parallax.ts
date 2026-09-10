@@ -150,7 +150,9 @@ export function useTeamParallax() {
       mm.add("(prefers-reduced-motion: reduce)", () => {
         gsap.set(allEls, { clearProps: "transform,opacity" });
       });
-      mm.add("(prefers-reduced-motion: no-preference) and (min-width: 1025px)", () => build(DESKTOP));
+      mm.add("(prefers-reduced-motion: no-preference) and (min-width: 1025px)", () =>
+        build(DESKTOP),
+      );
       mm.add(
         "(prefers-reduced-motion: no-preference) and (min-width: 768px) and (max-width: 1024px)",
         () => build(TABLET),

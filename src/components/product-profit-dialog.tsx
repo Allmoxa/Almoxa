@@ -14,7 +14,10 @@ export function ProductProfitDialog({ product, summary, onClose }: Props) {
   ];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/25 px-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-foreground/25 px-6"
+      onClick={onClose}
+    >
       <div
         className="paper-panel w-full max-w-sm p-6"
         style={{ boxShadow: "var(--shadow-lift)" }}
@@ -26,7 +29,8 @@ export function ProductProfitDialog({ product, summary, onClose }: Props) {
 
         {summary.unitsTotal === 0 ? (
           <p className="mt-5 text-sm text-muted-foreground">
-            Nenhuma venda registrada ainda. O lucro aparece aqui assim que a primeira saída for lançada.
+            Nenhuma venda registrada ainda. O lucro aparece aqui assim que a primeira saída for
+            lançada.
           </p>
         ) : (
           <dl className="mt-5 divide-y divide-border border-y border-border">
@@ -47,7 +51,8 @@ export function ProductProfitDialog({ product, summary, onClose }: Props) {
         )}
 
         <p className="mt-4 text-xs text-muted-foreground">
-          Calculado sobre o custo de compra vigente em cada venda, não sobre o preço de compra atual.
+          Calculado sobre o custo de compra vigente em cada venda, não sobre o preço de compra
+          atual.
         </p>
 
         <button

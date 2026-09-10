@@ -59,7 +59,9 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
       }
       const empty = current.find((row) => !row.productId);
       if (empty) {
-        return current.map((row) => (row.key === empty.key ? { ...row, productId: product.id, quantity: "1" } : row));
+        return current.map((row) =>
+          row.key === empty.key ? { ...row, productId: product.id, quantity: "1" } : row,
+        );
       }
       return [...current, { key: nextKey++, productId: product.id, quantity: "1" }];
     });
@@ -73,7 +75,10 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
 
   // O total sugerido é o preço de tabela; digitar outro valor é o que caracteriza
   // o desconto (ou o acréscimo) a ser rateado.
-  const tableTotal = filled.reduce((sum, line) => sum + line.quantity * (line.product?.sale_price ?? 0), 0);
+  const tableTotal = filled.reduce(
+    (sum, line) => sum + line.quantity * (line.product?.sale_price ?? 0),
+    0,
+  );
   const effectiveTotal = total.trim() ? num(total) : tableTotal;
 
   const unitPrices = splitSaleTotal(
@@ -83,7 +88,8 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
 
   // Duas linhas podem apontar para o mesmo produto: o estoque é conferido no somatório.
   const demand = new Map<string, number>();
-  for (const line of filled) demand.set(line.product!.id, (demand.get(line.product!.id) ?? 0) + line.quantity);
+  for (const line of filled)
+    demand.set(line.product!.id, (demand.get(line.product!.id) ?? 0) + line.quantity);
   const shortages = [...demand]
     .map(([id, wanted]) => ({ product: byId.get(id)!, wanted }))
     .filter((item) => item.product && item.wanted > item.product.quantity);
@@ -122,8 +128,8 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
         <p className="label-caps">Venda</p>
         <h2 className="mt-2 text-2xl">O que saiu do estoque</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Escolha os produtos e a quantidade, informe quanto o cliente pagou no total e o valor de cada peça sai
-          calculado.
+          Escolha os produtos e a quantidade, informe quanto o cliente pagou no total e o valor de
+          cada peça sai calculado.
         </p>
 
         {frequentProducts.length > 0 ? (
@@ -166,7 +172,9 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
                     onChange={(productId) => update(line.row.key, { productId })}
                   />
                   {line.product && line.quantity > 0 ? (
-                    <p className={`mt-1 text-xs ${short ? "text-destructive" : "text-muted-foreground"}`}>
+                    <p
+                      className={`mt-1 text-xs ${short ? "text-destructive" : "text-muted-foreground"}`}
+                    >
                       {short
                         ? `Só há ${qty(line.product.quantity)} un. em estoque`
                         : `${currency(unitPrices[index] ?? 0)} por un. — tabela ${currency(line.product.sale_price)}`}
@@ -184,7 +192,11 @@ export function SaleBuilderDialog({ products, frequentProducts = [], onCancel, o
                 />
                 <button
                   type="button"
-                  onClick={() => setRows((current) => (current.length > 1 ? current.filter((r) => r.key !== line.row.key) : current))}
+                  onClick={() =>
+                    setRows((current) =>
+                      current.length > 1 ? current.filter((r) => r.key !== line.row.key) : current,
+                    )
+                  }
                   disabled={rows.length === 1}
                   className="px-1 py-1.5 text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-40"
                 >

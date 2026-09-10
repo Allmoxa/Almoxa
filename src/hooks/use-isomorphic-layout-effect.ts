@@ -8,4 +8,5 @@ import { useEffect, useLayoutEffect } from "react";
  * servidor (onde nenhum dos dois roda de verdade) e useLayoutEffect no
  * navegador.
  */
-export const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+export const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;

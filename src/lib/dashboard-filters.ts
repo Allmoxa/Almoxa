@@ -211,7 +211,11 @@ export function getStalledProducts(
 // Faixa de valor
 // ---------------------------------------------------------------------------
 
-function matchesValueRange(value: number, minValue: number | null, maxValue: number | null): boolean {
+function matchesValueRange(
+  value: number,
+  minValue: number | null,
+  maxValue: number | null,
+): boolean {
   if (minValue != null && value < minValue) return false;
   if (maxValue != null && value > maxValue) return false;
   return true;
@@ -329,7 +333,8 @@ export function computeDashboardStats(
   // Indicadores
   const totalInvested = eligibleProducts.reduce((sum, p) => sum + p.purchase_price * p.quantity, 0);
   const avgTicket = finalOutMovements.length
-    ? finalOutMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) / finalOutMovements.length
+    ? finalOutMovements.reduce((sum, m) => sum + m.unit_price * m.quantity, 0) /
+      finalOutMovements.length
     : 0;
 
   const lowStock = [...eligibleProducts]
@@ -340,18 +345,26 @@ export function computeDashboardStats(
   const inactiveDays = filters.inactiveDays ?? DEFAULT_STALLED_DAYS;
   // Parados olha o histórico completo dos produtos já restritos por
   // produto/estoque/tipo — não o período filtrado (ver lastSaleByProduct).
-  const stalled = getStalledProducts(eligibleProducts, productScopedMovements, inactiveDays, now).slice(
-    0,
-    8,
-  );
+  const stalled = getStalledProducts(
+    eligibleProducts,
+    productScopedMovements,
+    inactiveDays,
+    now,
+  ).slice(0, 8);
 
   // Só produtos que de fato venderam no período entram nos rankings — como
   // antes, quando o mapa só existia a partir das saídas reais. Sem isso,
   // produto sem venda nenhuma apareceria como uma barra de valor zero.
   const soldAggregates = finalAggregates.filter((a) => a.qtySold > 0);
   const useDefaultSort = filters.sortBy === "default";
-  const sellersSorted = sortAggregates(soldAggregates, useDefaultSort ? "topSelling" : filters.sortBy);
-  const profitSorted = sortAggregates(soldAggregates, useDefaultSort ? "mostProfit" : filters.sortBy);
+  const sellersSorted = sortAggregates(
+    soldAggregates,
+    useDefaultSort ? "topSelling" : filters.sortBy,
+  );
+  const profitSorted = sortAggregates(
+    soldAggregates,
+    useDefaultSort ? "mostProfit" : filters.sortBy,
+  );
   const topSellers = sellersSorted.slice(0, 6).map((a) => ({ name: a.name, qty: a.qtySold }));
   const topProfit = profitSorted.slice(0, 6).map((a) => ({ name: a.name, profit: a.profit }));
 
@@ -412,7 +425,15 @@ function buildFlowSeries(
 // padrão — assim um dashboard sem filtro nenhum continua com a URL limpa.
 // ---------------------------------------------------------------------------
 
-const PERIOD_PRESETS: PeriodPreset[] = ["today", "7d", "14d", "30d", "month", "lastMonth", "custom"];
+const PERIOD_PRESETS: PeriodPreset[] = [
+  "today",
+  "7d",
+  "14d",
+  "30d",
+  "month",
+  "lastMonth",
+  "custom",
+];
 const STOCK_STATUSES: StockStatus[] = ["all", "normal", "low", "zero", "excess"];
 const MOVEMENT_TYPES: MovementTypeFilter[] = ["all", "in", "out"];
 const VALUE_TYPES: ValueType[] = ["cost", "sale", "profit"];
@@ -465,7 +486,9 @@ export function searchToFilters(search: DashboardSearch): DashboardFilters {
       ? (search.movement as MovementTypeFilter)
       : "all",
     inactiveDays: Number.isFinite(inactiveDays) ? inactiveDays : null,
-    valueType: VALUE_TYPES.includes(search.valueType as ValueType) ? (search.valueType as ValueType) : null,
+    valueType: VALUE_TYPES.includes(search.valueType as ValueType)
+      ? (search.valueType as ValueType)
+      : null,
     minValue: Number.isFinite(minValue) ? minValue : null,
     maxValue: Number.isFinite(maxValue) ? maxValue : null,
     sortBy: SORT_OPTIONS.includes(search.sort as SortBy) ? (search.sort as SortBy) : "default",
@@ -474,7 +497,8 @@ export function searchToFilters(search: DashboardSearch): DashboardFilters {
 
 export function filtersToSearch(filters: DashboardFilters): DashboardSearch {
   const search: DashboardSearch = {};
-  if (filters.period.preset !== DEFAULT_FILTERS.period.preset) search.period = filters.period.preset;
+  if (filters.period.preset !== DEFAULT_FILTERS.period.preset)
+    search.period = filters.period.preset;
   if (filters.period.preset === "custom") {
     if (filters.period.startDate) search.from = filters.period.startDate;
     if (filters.period.endDate) search.to = filters.period.endDate;

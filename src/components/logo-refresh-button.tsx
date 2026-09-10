@@ -65,9 +65,7 @@ export function LogoRefreshButton() {
               vectorEffect="non-scaling-stroke"
               className="logo-refresh-path"
               style={
-                lengths[i] != null
-                  ? ({ "--path-length": lengths[i] } as CSSProperties)
-                  : undefined
+                lengths[i] != null ? ({ "--path-length": lengths[i] } as CSSProperties) : undefined
               }
             />
           ))}

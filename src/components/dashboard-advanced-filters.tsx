@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -11,7 +17,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { FILTER_FIELD_CLASS } from "@/components/dashboard-filter-bar";
-import type { DashboardFilters, MovementTypeFilter, SortBy, ValueType } from "@/lib/dashboard-filters";
+import type {
+  DashboardFilters,
+  MovementTypeFilter,
+  SortBy,
+  ValueType,
+} from "@/lib/dashboard-filters";
 
 const MOVEMENT_OPTIONS: { value: MovementTypeFilter; label: string }[] = [
   { value: "all", label: "Todas" },
@@ -116,7 +127,9 @@ export function DashboardAdvancedFilters({
             </Label>
             <Select
               value={draft.inactiveDays == null ? "none" : String(draft.inactiveDays)}
-              onValueChange={(v) => setDraft({ ...draft, inactiveDays: v === "none" ? null : Number(v) })}
+              onValueChange={(v) =>
+                setDraft({ ...draft, inactiveDays: v === "none" ? null : Number(v) })
+              }
             >
               <SelectTrigger id="adv-inactive" className={FILTER_FIELD_CLASS}>
                 <SelectValue />
@@ -219,7 +232,10 @@ export function DashboardAdvancedFilters({
             <Label htmlFor="adv-sort" className="label-caps">
               Ordenação
             </Label>
-            <Select value={draft.sortBy} onValueChange={(v) => setDraft({ ...draft, sortBy: v as SortBy })}>
+            <Select
+              value={draft.sortBy}
+              onValueChange={(v) => setDraft({ ...draft, sortBy: v as SortBy })}
+            >
               <SelectTrigger id="adv-sort" className={FILTER_FIELD_CLASS}>
                 <SelectValue />
               </SelectTrigger>

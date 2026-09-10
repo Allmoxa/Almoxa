@@ -1,6 +1,12 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ProductFilter } from "@/components/dashboard-product-filter";
 import { currency } from "@/lib/inventory";
@@ -89,7 +95,8 @@ function buildChips(
     chips.push({
       key: `product-${id}`,
       label: product.name,
-      onRemove: () => onChange({ ...filters, productIds: filters.productIds.filter((p) => p !== id) }),
+      onRemove: () =>
+        onChange({ ...filters, productIds: filters.productIds.filter((p) => p !== id) }),
     });
   }
 
@@ -181,7 +188,10 @@ export function DashboardFilterBar({
           <Label htmlFor="dashboard-filter-period" className="label-caps">
             Período
           </Label>
-          <Select value={filters.period.preset} onValueChange={(v) => setPeriodPreset(v as PeriodPreset)}>
+          <Select
+            value={filters.period.preset}
+            onValueChange={(v) => setPeriodPreset(v as PeriodPreset)}
+          >
             <SelectTrigger id="dashboard-filter-period" className={FILTER_FIELD_CLASS}>
               <SelectValue />
             </SelectTrigger>
