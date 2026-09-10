@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { ArrowUpRight, Check, Menu, Moon, ShieldCheck, Settings, Sun } from "lucide-react";
+import { Check, Menu, Moon, ShieldCheck, Settings, Sun } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 import { AdminPanel } from "@/components/AdminPanel";
 import { NavTabLabel } from "@/components/nav-tab-label";
@@ -28,6 +28,10 @@ const nav = [
   { to: "/movimentacoes", label: "Movimentações" },
   { to: "/equipe", label: "Equipe" },
   { to: "/dashboard", label: "Dashboard" },
+  // Fora do ciclo acima de proposito: as sete primeiras sao o caminho do
+  // produto pela barraca, e a agenda e outro assunto — hora marcada com
+  // cliente. Fica no fim para nao partir aquela leitura.
+  { to: "/agenda", label: "Agenda" },
 ] as const;
 
 // O comissionado vê o estoque da loja e vende. Comprar, receber, o histórico e
@@ -66,11 +70,6 @@ export function AppShell({
     // Adiar o open evita a disputa de foco com o fechamento do próprio menu/sheet que disparou.
     setTimeout(() => setAdminPanelOpen(true), 0);
   };
-
-  // Vazio esconde o atalho: quem roda so o Almoxa nao tem agenda pra onde ir.
-  // Os dois sistemas tem deploy separado, entao isto e uma URL absoluta e nao
-  // uma rota — o <Link> do router nao alcanca o outro app.
-  const linkDaAgenda = import.meta.env["VITE_AGENDA_APP_URL"] as string | undefined;
 
   const signOut = async () => {
     setMobileOpen(false);
@@ -121,17 +120,6 @@ export function AppShell({
                     >
                       <ShieldCheck className="size-4" />
                       Painel administrativo
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                ) : null}
-                {linkDaAgenda ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <a href={linkDaAgenda} target="_blank" rel="noopener noreferrer">
-                        <ArrowUpRight className="size-4" />
-                        Ir para a Agenda
-                      </a>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
@@ -202,21 +190,6 @@ export function AppShell({
                     </Link>
                   ))}
                 </nav>
-
-                {linkDaAgenda ? (
-                  <div className="rule-top mt-6 pt-6">
-                    <a
-                      href={linkDaAgenda}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    >
-                      <ArrowUpRight className="size-4" />
-                      Ir para a Agenda
-                    </a>
-                  </div>
-                ) : null}
 
                 <div className="rule-top mt-6 pt-6">
                   <p className="label-caps px-3">Tema</p>

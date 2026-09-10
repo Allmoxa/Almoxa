@@ -21,6 +21,14 @@ import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedMovimentacoesRouteImport } from './routes/_authenticated/movimentacoes'
 import { Route as AuthenticatedReceberRouteImport } from './routes/_authenticated/receber'
 import { Route as AuthenticatedVenderRouteImport } from './routes/_authenticated/vender'
+import { Route as ASlugRouteImport } from './routes/a.$slug'
+import { Route as AgendamentoTokenRouteImport } from './routes/agendamento.$token'
+import { Route as AuthenticatedAgendaIndexRouteImport } from './routes/_authenticated/agenda/index'
+import { Route as AuthenticatedAgendaDisponibilidadeRouteImport } from './routes/_authenticated/agenda/disponibilidade'
+import { Route as AuthenticatedAgendaLinkRouteImport } from './routes/_authenticated/agenda/link'
+import { Route as AuthenticatedAgendaServicosRouteImport } from './routes/_authenticated/agenda/servicos'
+import { Route as ApiCalendarioTokenRouteImport } from './routes/api/calendario/$token'
+import { Route as ApiCronLembretesRouteImport } from './routes/api/cron/lembretes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -82,6 +90,49 @@ const AuthenticatedVenderRoute = AuthenticatedVenderRouteImport.update({
   path: '/vender',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ASlugRoute = ASlugRouteImport.update({
+  id: '/a/$slug',
+  path: '/a/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendamentoTokenRoute = AgendamentoTokenRouteImport.update({
+  id: '/agendamento/$token',
+  path: '/agendamento/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAgendaIndexRoute =
+  AuthenticatedAgendaIndexRouteImport.update({
+    id: '/agenda/',
+    path: '/agenda/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgendaDisponibilidadeRoute =
+  AuthenticatedAgendaDisponibilidadeRouteImport.update({
+    id: '/agenda/disponibilidade',
+    path: '/agenda/disponibilidade',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAgendaLinkRoute = AuthenticatedAgendaLinkRouteImport.update({
+  id: '/agenda/link',
+  path: '/agenda/link',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAgendaServicosRoute =
+  AuthenticatedAgendaServicosRouteImport.update({
+    id: '/agenda/servicos',
+    path: '/agenda/servicos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiCalendarioTokenRoute = ApiCalendarioTokenRouteImport.update({
+  id: '/api/calendario/$token',
+  path: '/api/calendario/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronLembretesRoute = ApiCronLembretesRouteImport.update({
+  id: '/api/cron/lembretes',
+  path: '/api/cron/lembretes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,6 +146,14 @@ export interface FileRoutesByFullPath {
   '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/receber': typeof AuthenticatedReceberRoute
   '/vender': typeof AuthenticatedVenderRoute
+  '/a/$slug': typeof ASlugRoute
+  '/agendamento/$token': typeof AgendamentoTokenRoute
+  '/agenda/disponibilidade': typeof AuthenticatedAgendaDisponibilidadeRoute
+  '/agenda/link': typeof AuthenticatedAgendaLinkRoute
+  '/agenda/servicos': typeof AuthenticatedAgendaServicosRoute
+  '/api/calendario/$token': typeof ApiCalendarioTokenRoute
+  '/api/cron/lembretes': typeof ApiCronLembretesRoute
+  '/agenda/': typeof AuthenticatedAgendaIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -108,6 +167,14 @@ export interface FileRoutesByTo {
   '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/receber': typeof AuthenticatedReceberRoute
   '/vender': typeof AuthenticatedVenderRoute
+  '/a/$slug': typeof ASlugRoute
+  '/agendamento/$token': typeof AgendamentoTokenRoute
+  '/agenda/disponibilidade': typeof AuthenticatedAgendaDisponibilidadeRoute
+  '/agenda/link': typeof AuthenticatedAgendaLinkRoute
+  '/agenda/servicos': typeof AuthenticatedAgendaServicosRoute
+  '/api/calendario/$token': typeof ApiCalendarioTokenRoute
+  '/api/cron/lembretes': typeof ApiCronLembretesRoute
+  '/agenda': typeof AuthenticatedAgendaIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -123,6 +190,14 @@ export interface FileRoutesById {
   '/_authenticated/movimentacoes': typeof AuthenticatedMovimentacoesRoute
   '/_authenticated/receber': typeof AuthenticatedReceberRoute
   '/_authenticated/vender': typeof AuthenticatedVenderRoute
+  '/a/$slug': typeof ASlugRoute
+  '/agendamento/$token': typeof AgendamentoTokenRoute
+  '/_authenticated/agenda/disponibilidade': typeof AuthenticatedAgendaDisponibilidadeRoute
+  '/_authenticated/agenda/link': typeof AuthenticatedAgendaLinkRoute
+  '/_authenticated/agenda/servicos': typeof AuthenticatedAgendaServicosRoute
+  '/api/calendario/$token': typeof ApiCalendarioTokenRoute
+  '/api/cron/lembretes': typeof ApiCronLembretesRoute
+  '/_authenticated/agenda/': typeof AuthenticatedAgendaIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -138,6 +213,14 @@ export interface FileRouteTypes {
     | '/movimentacoes'
     | '/receber'
     | '/vender'
+    | '/a/$slug'
+    | '/agendamento/$token'
+    | '/agenda/disponibilidade'
+    | '/agenda/link'
+    | '/agenda/servicos'
+    | '/api/calendario/$token'
+    | '/api/cron/lembretes'
+    | '/agenda/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -151,6 +234,14 @@ export interface FileRouteTypes {
     | '/movimentacoes'
     | '/receber'
     | '/vender'
+    | '/a/$slug'
+    | '/agendamento/$token'
+    | '/agenda/disponibilidade'
+    | '/agenda/link'
+    | '/agenda/servicos'
+    | '/api/calendario/$token'
+    | '/api/cron/lembretes'
+    | '/agenda'
   id:
     | '__root__'
     | '/'
@@ -165,6 +256,14 @@ export interface FileRouteTypes {
     | '/_authenticated/movimentacoes'
     | '/_authenticated/receber'
     | '/_authenticated/vender'
+    | '/a/$slug'
+    | '/agendamento/$token'
+    | '/_authenticated/agenda/disponibilidade'
+    | '/_authenticated/agenda/link'
+    | '/_authenticated/agenda/servicos'
+    | '/api/calendario/$token'
+    | '/api/cron/lembretes'
+    | '/_authenticated/agenda/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -173,6 +272,10 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CriarContaRoute: typeof CriarContaRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
+  ASlugRoute: typeof ASlugRoute
+  AgendamentoTokenRoute: typeof AgendamentoTokenRoute
+  ApiCalendarioTokenRoute: typeof ApiCalendarioTokenRoute
+  ApiCronLembretesRoute: typeof ApiCronLembretesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -261,6 +364,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVenderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/a/$slug': {
+      id: '/a/$slug'
+      path: '/a/$slug'
+      fullPath: '/a/$slug'
+      preLoaderRoute: typeof ASlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agendamento/$token': {
+      id: '/agendamento/$token'
+      path: '/agendamento/$token'
+      fullPath: '/agendamento/$token'
+      preLoaderRoute: typeof AgendamentoTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/agenda/': {
+      id: '/_authenticated/agenda/'
+      path: '/agenda'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AuthenticatedAgendaIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agenda/disponibilidade': {
+      id: '/_authenticated/agenda/disponibilidade'
+      path: '/agenda/disponibilidade'
+      fullPath: '/agenda/disponibilidade'
+      preLoaderRoute: typeof AuthenticatedAgendaDisponibilidadeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agenda/link': {
+      id: '/_authenticated/agenda/link'
+      path: '/agenda/link'
+      fullPath: '/agenda/link'
+      preLoaderRoute: typeof AuthenticatedAgendaLinkRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/agenda/servicos': {
+      id: '/_authenticated/agenda/servicos'
+      path: '/agenda/servicos'
+      fullPath: '/agenda/servicos'
+      preLoaderRoute: typeof AuthenticatedAgendaServicosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/calendario/$token': {
+      id: '/api/calendario/$token'
+      path: '/api/calendario/$token'
+      fullPath: '/api/calendario/$token'
+      preLoaderRoute: typeof ApiCalendarioTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/lembretes': {
+      id: '/api/cron/lembretes'
+      path: '/api/cron/lembretes'
+      fullPath: '/api/cron/lembretes'
+      preLoaderRoute: typeof ApiCronLembretesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -272,6 +431,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMovimentacoesRoute: typeof AuthenticatedMovimentacoesRoute
   AuthenticatedReceberRoute: typeof AuthenticatedReceberRoute
   AuthenticatedVenderRoute: typeof AuthenticatedVenderRoute
+  AuthenticatedAgendaDisponibilidadeRoute: typeof AuthenticatedAgendaDisponibilidadeRoute
+  AuthenticatedAgendaLinkRoute: typeof AuthenticatedAgendaLinkRoute
+  AuthenticatedAgendaServicosRoute: typeof AuthenticatedAgendaServicosRoute
+  AuthenticatedAgendaIndexRoute: typeof AuthenticatedAgendaIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -282,6 +445,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMovimentacoesRoute: AuthenticatedMovimentacoesRoute,
   AuthenticatedReceberRoute: AuthenticatedReceberRoute,
   AuthenticatedVenderRoute: AuthenticatedVenderRoute,
+  AuthenticatedAgendaDisponibilidadeRoute:
+    AuthenticatedAgendaDisponibilidadeRoute,
+  AuthenticatedAgendaLinkRoute: AuthenticatedAgendaLinkRoute,
+  AuthenticatedAgendaServicosRoute: AuthenticatedAgendaServicosRoute,
+  AuthenticatedAgendaIndexRoute: AuthenticatedAgendaIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -293,6 +461,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CriarContaRoute: CriarContaRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
+  ASlugRoute: ASlugRoute,
+  AgendamentoTokenRoute: AgendamentoTokenRoute,
+  ApiCalendarioTokenRoute: ApiCalendarioTokenRoute,
+  ApiCronLembretesRoute: ApiCronLembretesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -38,8 +38,11 @@ SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GEMINI_API_KEY=
 
-# Opcional: URL da Almoxá Agenda. Vazia esconde o atalho no menu.
-VITE_AGENDA_APP_URL=
+# Almoxá Agenda (mesmo app, rotas /agenda e /a/<slug>)
+RESEND_API_KEY=
+AGENDA_EMAIL_FROM=
+AGENDA_PUBLIC_URL=
+CRON_SECRET=
 ```
 
 ## 📁 Estrutura
@@ -47,39 +50,86 @@ VITE_AGENDA_APP_URL=
 - `src/routes/` — rotas: estoque, receber (foto/documento), movimentações, auth e landing
 - `src/lib/intake.functions.ts` — extração de dados por IA a partir de fotos/documentos
 - `src/components/AppShell.tsx` — navegação das áreas autenticadas
-- `agenda/` — **a Almoxá Agenda**, projeto completo e independente (ver abaixo)
+- `src/agenda/` — **a Almoxá Agenda**: componentes, lógica e testes dela (ver abaixo)
 
 ## 📅 Almoxá Agenda
 
-O repositório guarda **dois projetos**. A Agenda vive em `agenda/` e é
-independente: tem `package.json`, `vite.config.ts`, `eslint.config.js`,
-`tsconfig.json` e migrations próprios. Nada na raiz a constrói, e o
-`npm install` daqui não instala as dependências dela.
+Agendamento por link: o cliente escolhe serviço e horário **sem criar conta**, e
+o prestador vê tudo numa agenda e recebe os compromissos no calendário do
+celular.
 
-```sh
-cd agenda
-npm install
-cp .env.example .env   # preencha as chaves
-npm run dev            # http://localhost:8081
+É **o mesmo app**, não um projeto vizinho — um deploy, um domínio, um projeto na
+Vercel. Foi o que o plano gratuito permitiu, e acabou sendo melhor: o login é um
+só de verdade, sem salto entre sites.
+
+O código dela mora em `src/agenda/` (componentes, lógica, testes). Só as rotas
+ficam fora, em `src/routes/`, porque o roteamento é por arquivo e elas têm de
+estar lá.
+
+| Rota                      | Quem usa                                       |
+| ------------------------- | ---------------------------------------------- |
+| `/agenda`                 | horários marcados                              |
+| `/agenda/servicos`        | o que você oferece                             |
+| `/agenda/disponibilidade` | expediente e folgas                            |
+| `/agenda/link`            | link público e assinatura de calendário        |
+| `/a/$slug`                | **agendamento público — sem login**            |
+| `/agendamento/$token`     | comprovante do cliente: ver, salvar, desmarcar |
+| `/api/calendario/$token`  | feed `.ics`                                    |
+| `/api/cron/lembretes`     | disparo dos lembretes                          |
+
+As quatro primeiras entram pela aba **Agenda** na barra de cima, e se dividem
+por sub-abas dentro da página: oito abas na barra principal não caberiam.
+
+**Duas decisões que sustentam o resto:**
+
+_Ninguém marca em cima de ninguém._ A constraint `appointments_sem_sobreposicao`
+(`EXCLUDE USING gist`) recusa qualquer sobreposição na agenda de um prestador.
+Dois clientes clicando "confirmar" no mesmo segundo passam os dois pela checagem
+em `SELECT` — só o banco resolve esse empate. O segundo `INSERT` volta `23P01` e
+a aplicação traduz para "esse horário acabou de ser preenchido".
+
+_O cliente não fala com o Postgres._ Ele não tem sessão, então não há RLS para
+avaliar: todo o tráfego público passa pelas server functions, que usam a service
+role e montam a resposta campo a campo. `anon` não recebe `GRANT` nenhum. Um
+`select("*")` em `src/agenda/lib/booking.functions.ts` vazaria o
+`calendar_token` do prestador ou o telefone de outro cliente sem nada acusar.
+
+### Lembretes
+
+Saem do cron da Vercel, **uma vez por dia** (`0 11 * * *`, 8h de Brasília):
+o plano Hobby recusa qualquer coisa mais frequente. `CRON_SECRET` autoriza a
+rota, comparado em tempo constante; sem o segredo ela responde 503 em vez de
+abrir — melhor não enviar do que deixar endpoint público disparando e-mail.
+
+A cadência diária muda a regra de disparo, e o código sabe: comparar só "está
+dentro da antecedência?" perderia lembrete calado, porque um horário de hoje à
+tarde com antecedência de 2h seria julgado "longe" às 8h e na passada seguinte
+já teria acontecido. `src/agenda/lib/lembretes.ts` soma o intervalo do cron à
+antecedência — avisa mais cedo em vez de não avisar — e os testes simulam as
+passadas provando que ninguém fica sem aviso.
+
+Para a granularidade fina sem pagar, tire o cron do `vercel.json` e chame a rota
+pelo `pg_cron` do Supabase, baixando `INTERVALO_DO_CRON_MINUTOS` junto.
+
+### Migration
+
+`supabase/migrations/` guarda o schema da Agenda (`providers`, `services`,
+`availability_rules`, `availability_blocks`, `appointments`, `booking_quota`).
+Como os dois lados usam o mesmo projeto Supabase, compartilham `auth.users` e as
+tabelas não colidem.
+
+O trigger `on_auth_user_created_agenda` só cadastra prestador para conta criada
+**depois** da migration. Se o projeto já tinha usuários, faça o backfill:
+
+```sql
+INSERT INTO public.providers (user_id, slug, display_name, contact_email)
+SELECT u.id,
+       btrim(left(regexp_replace(lower(split_part(u.email, '@', 1)), '[^a-z0-9]+', '-', 'g'), 32), '-'),
+       split_part(u.email, '@', 1),
+       u.email
+FROM auth.users u
+ON CONFLICT (user_id) DO NOTHING;
 ```
-
-A porta é 8081 de propósito: o Almoxá usa a 8080, e os dois sobem juntos.
-
-Uma armadilha do aninhamento: o Node resolve módulo subindo diretório, então
-`agenda/` pode pegar pacote do `node_modules` da raiz quando falta no dela — e
-rodar com a versão do Almoxá sem avisar. Na Vercel isso não acontece, porque o
-build com Root Directory `agenda` instala isolado. Se o comportamento local
-divergir do deploy, é o primeiro lugar pra olhar; `cd agenda && npm ci` resolve.
-
-Os dois se ligam por link, não por código: `VITE_AGENDA_APP_URL` acende o
-atalho "Ir para a Agenda" no menu daqui, e `VITE_ALMOXA_APP_URL`, lá, acende o
-caminho de volta. Vazias, os atalhos somem. Apontando para o mesmo projeto
-Supabase, os dois compartilham `auth.users` — o mesmo login serve para ambos, e
-as tabelas não colidem.
-
-No deploy eles são **dois projetos separados na Vercel** sobre o mesmo
-repositório: o da Agenda precisa de Root Directory `agenda`. O `agenda/README.md`
-tem o detalhe das variáveis e do cron de lembretes.
 
 ## 🔑 Autenticação
 
