@@ -1,0 +1,20 @@
+node_modules
+dist
+.output
+.vinxi
+# Saida do build e cache do plugin de rotas. Sem isto, `prettier --write .`
+# reescreve o bundle minificado do proprio build.
+.vercel
+.nitro
+.tanstack
+pnpm-lock.yaml
+package-lock.json
+bun.lock
+routeTree.gen.ts
+
+# Gerado pelo Supabase CLI, mesmo caso do routeTree.gen.ts acima: formatar aqui
+# so cria ruido, porque a proxima geracao desfaz.
+src/integrations/supabase/types.ts
+
+# Nao tem parser: o prettier falha em vez de ignorar.
+.nvmrc

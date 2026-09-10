@@ -6,12 +6,13 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
+  // .vercel e .nitro guardam a saída do build (milhares de .mjs); .tanstack é
+  // cache do plugin de rotas. Sem ignorar, o lint varre tudo isso e leva
+  // minutos em vez de segundos.
   // Os globs precisam do `/**`: no flat config um padrao sem barra casa a
-  // entrada com aquele nome, nao o que esta dentro dela. Sem isso o lint desce
-  // no bundle minificado do build e nunca termina.
-  //
-  // `agenda/**` fica de fora porque a Almoxa Agenda tem eslint.config.js e
-  // tsconfig proprios: quem faz o lint dela e ela mesma, de dentro da pasta.
+  // entrada com aquele nome, nao o que esta dentro dela. Sem isso o lint
+  // desce no bundle minificado do build e devolve dezenas de milhares de
+  // erros de formatacao em codigo que nao e nosso.
   {
     ignores: [
       "dist/**",
@@ -20,7 +21,7 @@ export default tseslint.config(
       ".vercel/**",
       ".nitro/**",
       ".tanstack/**",
-      "agenda/**",
+      "src/routeTree.gen.ts",
     ],
   },
   {

@@ -2,6 +2,11 @@ node_modules
 dist
 .output
 .vinxi
+# Saida do build e cache do plugin de rotas: sem isto o prettier desce no
+# bundle minificado do proprio build e leva minutos em vez de segundos.
+.vercel
+.nitro
+.tanstack
 pnpm-lock.yaml
 package-lock.json
 bun.lock
@@ -10,3 +15,8 @@ routeTree.gen.ts
 # Gerado pelo Supabase CLI, mesmo caso do routeTree.gen.ts acima: formatar aqui
 # so cria ruido, porque a proxima geracao desfaz.
 src/integrations/supabase/types.ts
+
+# A Almoxa Agenda e um projeto completo com config propria (.prettierrc,
+# .prettierignore, eslint.config.js). Quem formata ela e ela mesma, de dentro
+# da propria pasta; daqui so criaria conflito entre as duas configs.
+agenda

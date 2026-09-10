@@ -1,0 +1,682 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * "Papel claro" — mesmo design system do Almoxá (src/styles.css de lá).
+ * Fundo de papel quente, tipo preto-tinta, acento âmbar. Todas as cores são
+ * tokens oklch; nunca escreva cor crua num componente.
+ *
+ * O que é novo aqui, e só aqui, mora depois do bloco "AGENDA": grade de
+ * horários, cartão-canhoto, trilho de etapas. É a camada que o Almoxá não
+ * tem porque não precisa.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-logo: "Zilla Slab", ui-serif, Georgia, serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-paper: 0 1px 2px oklch(0.177 0.002 106.6 / 0.05);
+  --shadow-lift: 0 12px 40px -18px oklch(0.177 0.002 106.6 / 0.22);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.004 91.4);
+  --foreground: oklch(0.177 0.002 106.6);
+  --card: oklch(1 0 89.9);
+  --card-foreground: oklch(0.177 0.002 106.6);
+  --popover: oklch(1 0 89.9);
+  --popover-foreground: oklch(0.177 0.002 106.6);
+  --primary: oklch(0.177 0.002 106.6);
+  --primary-foreground: oklch(0.985 0.004 91.4);
+  --secondary: oklch(0.964 0.007 88.6);
+  --secondary-foreground: oklch(0.177 0.002 106.6);
+  --muted: oklch(0.964 0.007 88.6);
+  --muted-foreground: oklch(0.515 0.015 86.9);
+  --accent: oklch(0.7 0.141 65.6);
+  --accent-foreground: oklch(0.177 0.002 106.6);
+  --destructive: oklch(0.536 0.153 38.2);
+  --destructive-foreground: oklch(0.985 0.004 91.4);
+  --success: oklch(0.515 0.11 156.8);
+  --success-foreground: oklch(0.985 0.004 91.4);
+  --border: oklch(0.916 0.013 86.8);
+  --border-strong: oklch(0.886 0.016 86.4);
+  --input: oklch(0.886 0.016 86.4);
+  --ring: oklch(0.7 0.141 65.6);
+  --chart-1: oklch(0.7 0.141 65.6);
+  --chart-2: oklch(0.515 0.11 156.8);
+  --chart-3: oklch(0.536 0.153 38.2);
+  --chart-4: oklch(0.618 0.017 86.5);
+  --chart-5: oklch(0.177 0.002 106.6);
+  --sidebar: oklch(0.964 0.007 88.6);
+  --sidebar-foreground: oklch(0.177 0.002 106.6);
+  --sidebar-primary: oklch(0.177 0.002 106.6);
+  --sidebar-primary-foreground: oklch(0.985 0.004 91.4);
+  --sidebar-accent: oklch(0.916 0.013 86.8);
+  --sidebar-accent-foreground: oklch(0.177 0.002 106.6);
+  --sidebar-border: oklch(0.916 0.013 86.8);
+  --sidebar-ring: oklch(0.7 0.141 65.6);
+}
+
+.dark {
+  --background: #262624;
+  --foreground: #c3c0b6;
+  --card: #262624;
+  --card-foreground: #faf9f5;
+  --popover: #30302e;
+  --popover-foreground: #e5e5e2;
+  --primary: #8c6747;
+  --primary-foreground: #ffffff;
+  --secondary: #faf9f5;
+  --secondary-foreground: #30302e;
+  --muted: #1b1b19;
+  --muted-foreground: #b7b5a9;
+  --accent: #1a1915;
+  --accent-foreground: #f5f4ee;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #6b8f5a;
+  --success-foreground: #ffffff;
+  --border: #3e3e38;
+  --border-strong: #52514a;
+  --input: #52514a;
+  --ring: #8c6747;
+  --chart-1: #8c6747;
+  --chart-2: #9c87f5;
+  --chart-3: #b05730;
+  --chart-4: #2f2b48;
+  --chart-5: #b4552d;
+  --sidebar: #1f1e1d;
+  --sidebar-foreground: #c3c0b6;
+  --sidebar-primary: #8c6747;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1915;
+  --sidebar-accent-foreground: #c3c0b6;
+  --sidebar-border: #3e3e38;
+  --sidebar-ring: #8c6747;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /*
+   * Mobile primeiro de verdade: o alvo de toque mínimo (44px) vale como piso
+   * em tudo que é clicável dentro do fluxo público, e o iOS para de dar zoom
+   * ao focar um input quando a fonte tem 16px ou mais.
+   */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+}
+
+@utility label-caps {
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility rule-top {
+  border-top: 1px solid var(--color-border);
+}
+
+@utility paper-panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-paper);
+}
+
+@utility paper-texture-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='0.35'/%3E%3C/svg%3E");
+  background-blend-mode: multiply;
+}
+
+@keyframes box-spin {
+  from {
+    transform: rotateX(-28deg) rotateY(0deg);
+  }
+  to {
+    transform: rotateX(-28deg) rotateY(360deg);
+  }
+}
+
+@utility animate-box-spin {
+  animation: box-spin 2.4s linear infinite;
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@utility animate-card-rise {
+  animation: card-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/*
+ * Canto artesanal da aba ativa da navbar (NavTabLabel), igual ao do Almoxá.
+ * --corner-length vem do getTotalLength() de cada <path>, plantado via JS no
+ * mount; o fallback de 24 é rede de segurança pro instante antes disso.
+ */
+@utility nav-tab-corner {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5px;
+  stroke-linecap: round;
+  stroke-dasharray: var(--corner-length, 24);
+  stroke-dashoffset: var(--corner-length, 24);
+  opacity: 0;
+}
+
+.nav-tab:not(.is-active) .nav-tab-corner[data-peek="true"] {
+  transition:
+    opacity 200ms ease-out,
+    stroke-dashoffset 200ms ease-out;
+}
+
+.nav-tab:not(.is-active):hover .nav-tab-corner[data-peek="true"] {
+  opacity: 0.4;
+  stroke-dashoffset: calc(var(--corner-length, 24) * 0.72);
+}
+
+/* ==========================================================================
+ * AGENDA — a camada que só existe neste projeto.
+ * ========================================================================== */
+
+/*
+ * Trilho de etapas do agendamento público (serviço → dia → horário → dados).
+ * A barra de progresso é um único elemento cuja largura sai de --step-progress
+ * (0..1), setado inline pelo React. Um <div> por etapa animando largura
+ * separada daria costura visível entre eles; assim é um traço contínuo só.
+ */
+.step-rail {
+  --step-progress: 0;
+  position: relative;
+  height: 2px;
+  background-color: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.step-rail::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--step-progress) * 100%);
+  background-color: var(--color-accent);
+  border-radius: inherit;
+  transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-rail::after {
+    transition-duration: 1ms;
+  }
+}
+
+/*
+ * Grade de horários. auto-fill + minmax deixa a contagem de colunas por conta
+ * do container: 2 colunas num celular estreito, 5 ou 6 no desktop, sem media
+ * query nenhuma. O minmax é em ch pra a caixa acompanhar o tamanho da fonte
+ * (o "09:30" ocupa 5ch), não um pixel escolhido no olho.
+ */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(5.5rem, 28cqi, 7rem), 1fr));
+  gap: 0.5rem;
+}
+
+/*
+ * O @container acima só resolve se alguém for o container. É o wrapper da
+ * grade — e não o body — porque no desktop a grade divide a linha com o
+ * resumo lateral, então a largura que importa é a dela, não a da janela.
+ */
+.slot-grid-container {
+  container-type: inline-size;
+}
+
+/*
+ * Botão de horário: papelão seco por padrão, tinta cheia quando escolhido.
+ * O ::before é a "marca de carimbo" que cresce do centro — transform em vez
+ * de background-color pra animação ficar no compositor.
+ */
+.slot-chip {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 44px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-card);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slot-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-foreground);
+  transform: scale(0);
+  border-radius: inherit;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slot-chip:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.slot-chip[data-selected="true"] {
+  color: var(--color-background);
+  border-color: var(--color-foreground);
+}
+
+.slot-chip[data-selected="true"]::before {
+  transform: scale(1);
+}
+
+.slot-chip:disabled {
+  cursor: not-allowed;
+  color: var(--color-muted-foreground);
+  border-style: dashed;
+  border-color: var(--color-border);
+  background-color: transparent;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.slot-chip:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-chip,
+  .slot-chip::before {
+    transition-duration: 1ms;
+  }
+  .slot-chip:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/*
+ * Cartão de serviço. A borda vira âmbar quando o rádio escondido dentro dele
+ * está marcado — :has() evita ter que espelhar o estado do React numa classe.
+ */
+.service-card {
+  position: relative;
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-card);
+  box-shadow: var(--shadow-paper);
+  cursor: pointer;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.service-card:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+.service-card:has(input:checked) {
+  border-color: var(--color-accent);
+  box-shadow:
+    var(--shadow-paper),
+    0 0 0 1px var(--color-accent);
+}
+
+.service-card:has(input:focus-visible) {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-card {
+    transition: border-color 200ms ease;
+  }
+  .service-card:hover {
+    transform: none;
+  }
+}
+
+/*
+ * Canhoto do agendamento confirmado — comprovante de papel picotado. A borda
+ * serrilhada é uma máscara de gradientes radiais repetidos, não imagem: o
+ * furo "come" o fundo do cartão, então funciona igual no tema claro e no
+ * escuro sem nenhuma cor extra pra manter em dia.
+ */
+.ticket-stub {
+  --stub-notch: 9px;
+  position: relative;
+  background-color: var(--color-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+}
+
+.ticket-stub::before,
+.ticket-stub::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--stub-notch);
+  background-image: radial-gradient(
+    circle at var(--stub-notch) 50%,
+    transparent var(--stub-notch),
+    var(--color-card) calc(var(--stub-notch) + 0.5px)
+  );
+  background-size: calc(var(--stub-notch) * 2) 100%;
+  background-repeat: repeat-x;
+}
+
+.ticket-stub::before {
+  top: calc(var(--stub-notch) * -1 + 1px);
+}
+
+.ticket-stub::after {
+  bottom: calc(var(--stub-notch) * -1 + 1px);
+  transform: rotate(180deg);
+}
+
+/* Linha picotada que separa o corpo do canhoto do rodapé de ações. */
+.ticket-perforation {
+  border-top: 2px dashed var(--color-border);
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+
+/*
+ * Barra de ação fixa no rodapé do celular. env(safe-area-inset-bottom) tira o
+ * botão de baixo da barrinha do iPhone; em aparelho sem entalhe o valor é 0,
+ * então a mesma regra serve pros dois.
+ */
+.mobile-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  background-color: color-mix(in oklch, var(--color-background) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--color-border);
+}
+
+/*
+ * Faixa de dias em rolagem horizontal (celular). scroll-snap prende o dia no
+ * início da faixa; scrollbar-width: none some com a barra sem matar o gesto.
+ */
+.day-strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.25rem;
+}
+
+.day-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.day-strip > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+.day-chip {
+  min-width: 3.75rem;
+  min-height: 4.25rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background-color: var(--color-card);
+  cursor: pointer;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.day-chip[data-selected="true"] {
+  background-color: var(--color-foreground);
+  border-color: var(--color-foreground);
+  color: var(--color-background);
+}
+
+.day-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.day-chip:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Fita do dia na visão do prestador: um bloco por agendamento, altura
+ * proporcional à duração. --slot-top/--slot-height chegam em minutos a
+ * partir do início do expediente e viram px por uma escala única
+ * (--minute-scale), então mudar o zoom da régua é mexer numa variável só.
+ */
+.day-timeline {
+  --minute-scale: 1.6px;
+  position: relative;
+}
+
+.timeline-event {
+  position: absolute;
+  left: 3.5rem;
+  right: 0;
+  top: calc(var(--slot-top) * var(--minute-scale));
+  min-height: 2rem;
+  height: calc(var(--slot-height) * var(--minute-scale));
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background-color: color-mix(in oklch, var(--color-accent) 12%, var(--color-card));
+  padding: 0.375rem 0.625rem;
+  overflow: hidden;
+}
+
+.timeline-event[data-status="cancelado"] {
+  border-left-color: var(--color-muted-foreground);
+  background-color: var(--color-muted);
+  opacity: 0.65;
+}
+
+.timeline-event[data-status="concluido"] {
+  border-left-color: var(--color-success);
+  background-color: color-mix(in oklch, var(--color-success) 10%, var(--color-card));
+}
+
+.timeline-hour {
+  position: absolute;
+  left: 0;
+  width: 3rem;
+  text-align: right;
+  transform: translateY(-0.5em);
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-hour-rule {
+  position: absolute;
+  left: 3.5rem;
+  right: 0;
+  border-top: 1px dashed var(--color-border);
+}
+
+/*
+ * Etiqueta de status. Uma regra só, cor vinda de --tone, que cada data-tone
+ * define — em vez de quatro blocos quase iguais.
+ */
+.status-pill {
+  --tone: var(--color-muted-foreground);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklch, var(--tone) 40%, transparent);
+  background-color: color-mix(in oklch, var(--tone) 12%, transparent);
+  color: var(--tone);
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-pill[data-tone="confirmado"] {
+  --tone: var(--color-success);
+}
+.status-pill[data-tone="cancelado"] {
+  --tone: var(--color-destructive);
+}
+.status-pill[data-tone="concluido"] {
+  --tone: var(--color-accent);
+}
+
+/*
+ * Transição entre as etapas do agendamento. Só entrada: a etapa que sai já
+ * foi desmontada pelo React quando isso roda.
+ */
+@keyframes step-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@utility animate-step-slide {
+  animation: step-slide-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-step-slide,
+  .animate-card-rise {
+    animation-duration: 1ms;
+  }
+}
+
+/*
+ * Esqueleto dos horários enquanto o servidor responde: brilho varrendo a
+ * caixa. background-position anima sem repintar layout.
+ */
+@keyframes slot-shimmer {
+  from {
+    background-position: -140% 0;
+  }
+  to {
+    background-position: 240% 0;
+  }
+}
+
+@utility animate-slot-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-muted) 0%,
+    color-mix(in oklch, var(--color-muted) 55%, var(--color-card)) 50%,
+    var(--color-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: slot-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slot-shimmer {
+    animation: none;
+  }
+}

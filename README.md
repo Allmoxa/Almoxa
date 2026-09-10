@@ -37,6 +37,9 @@ SUPABASE_URL=
 SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 GEMINI_API_KEY=
+
+# Opcional: URL da Almoxá Agenda. Vazia esconde o atalho no menu.
+VITE_AGENDA_APP_URL=
 ```
 
 ## 📁 Estrutura
@@ -44,6 +47,33 @@ GEMINI_API_KEY=
 - `src/routes/` — rotas: estoque, receber (foto/documento), movimentações, auth e landing
 - `src/lib/intake.functions.ts` — extração de dados por IA a partir de fotos/documentos
 - `src/components/AppShell.tsx` — navegação das áreas autenticadas
+- `agenda/` — **a Almoxá Agenda**, projeto completo e independente (ver abaixo)
+
+## 📅 Almoxá Agenda
+
+O repositório guarda **dois projetos**. A Agenda vive em `agenda/` e é
+independente: tem `package.json`, `vite.config.ts`, `eslint.config.js`,
+`tsconfig.json` e migrations próprios. Nada na raiz a constrói, e o
+`npm install` daqui não instala as dependências dela.
+
+```sh
+cd agenda
+npm install
+cp .env.example .env   # preencha as chaves
+npm run dev            # http://localhost:8081
+```
+
+A porta é 8081 de propósito: o Almoxá usa a 8080, e os dois sobem juntos.
+
+Os dois se ligam por link, não por código: `VITE_AGENDA_APP_URL` acende o
+atalho "Ir para a Agenda" no menu daqui, e `VITE_ALMOXA_APP_URL`, lá, acende o
+caminho de volta. Vazias, os atalhos somem. Apontando para o mesmo projeto
+Supabase, os dois compartilham `auth.users` — o mesmo login serve para ambos, e
+as tabelas não colidem.
+
+No deploy eles são **dois projetos separados na Vercel** sobre o mesmo
+repositório: o da Agenda precisa de Root Directory `agenda`. O `agenda/README.md`
+tem o detalhe das variáveis e do cron de lembretes.
 
 ## 🔑 Autenticação
 
