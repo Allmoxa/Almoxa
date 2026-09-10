@@ -114,7 +114,40 @@ não tem sessão, então é o servidor que grava por ele. Cadastre como variáve
 servidor; ela nunca deve aparecer numa `VITE_*`, que vai pro bundle do
 navegador.
 
-Feito isso, o cron passa a rodar de 15 em 15 minutos e a agenda está de pé.
+### O cron no plano Hobby
+
+O plano gratuito da Vercel **só aceita cron diário**: uma expressão de 15 em 15
+minutos é recusada na hora do deploy, com "Hobby accounts are limited to daily
+cron jobs". Por isso o `vercel.json` traz `0 11 * * *` — 8h no horário de
+Brasília, quando os lembretes do dia seguinte saem juntos.
+
+Isso muda o significado de `reminder_hours`, e o código sabe disso. Com uma
+passada por dia, a regra não pode ser "está dentro da antecedência?": um
+horário marcado para hoje às 14h, com antecedência de 2h, seria considerado
+"longe" às 8h e na passada seguinte já teria acontecido — lembrete perdido, sem
+nada no log. A regra em `src/lib/lembretes.ts` soma o intervalo do cron à
+antecedência, então avisa mais cedo em vez de não avisar. Os testes ali
+simulam as passadas e provam que nenhum agendamento fica sem aviso.
+
+**Se quiser a granularidade fina sem pagar**, tire o cron do `vercel.json` e
+chame a rota pelo `pg_cron` do Supabase, que não tem esse limite:
+
+```sql
+select cron.schedule(
+  'lembretes-agenda',
+  '*/15 * * * *',
+  $$select net.http_get(
+      url := 'https://SEU_DOMINIO/api/cron/lembretes',
+      headers := '{"Authorization": "Bearer SEU_CRON_SECRET"}'::jsonb
+    )$$
+);
+```
+
+Nesse caso baixe `INTERVALO_DO_CRON_MINUTOS` em `src/routes/api/cron/lembretes.ts`
+para 15: a constante e o agendamento de verdade descrevem a mesma coisa, e
+mentir ali é o que faz lembrete chegar na hora errada.
+
+Feito isso, a agenda está de pé.
 
 ## Como o compromisso chega no celular
 
@@ -138,9 +171,9 @@ bytes, não caracteres — em português "ã" e "ç" custam dois cada.
 ## E-mail
 
 Confirmação e cancelamento saem na hora, pela server function. O lembrete sai do
-cron da Vercel (`/api/cron/lembretes`, de 15 em 15 minutos), protegido por
-`CRON_SECRET` e comparado em tempo constante; sem o segredo configurado a rota
-responde 503 em vez de abrir. `reminder_sent_at` é gravado por agendamento logo
+cron da Vercel (`/api/cron/lembretes`, uma vez por dia — ver [O cron no plano
+Hobby](#o-cron-no-plano-hobby)), protegido por `CRON_SECRET` e comparado em
+tempo constante; sem o segredo configurado a rota responde 503 em vez de abrir. `reminder_sent_at` é gravado por agendamento logo
 após o envio, então uma falha no meio da lista não reenvia para quem já recebeu.
 
 Falha de envio nunca derruba o agendamento: ele já está gravado quando o e-mail
@@ -192,7 +225,9 @@ o mesmo login serve para os dois, e as tabelas não colidem. O caminho contrári
 
 ## Testes
 
-52 testes cobrindo o que quebra em silêncio: conversão de fuso nas duas
+64 testes cobrindo o que quebra em silêncio: conversão de fuso nas duas
 direções, virada de horário de verão, geração da grade (buffer, bloqueio,
-antecedência mínima, faixas encostadas), e o formato do iCalendar (CRLF, dobra
-em octetos com acento, escape na ordem certa).
+antecedência mínima, faixas encostadas), o formato do iCalendar (CRLF, dobra
+em octetos com acento, escape na ordem certa) e a decisão de disparo do
+lembrete — esta última simulando as passadas do cron, porque lembrete não
+enviado é a falha que não deixa rastro nenhum.

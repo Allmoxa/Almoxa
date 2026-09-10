@@ -65,6 +65,12 @@ npm run dev            # http://localhost:8081
 
 A porta é 8081 de propósito: o Almoxá usa a 8080, e os dois sobem juntos.
 
+Uma armadilha do aninhamento: o Node resolve módulo subindo diretório, então
+`agenda/` pode pegar pacote do `node_modules` da raiz quando falta no dela — e
+rodar com a versão do Almoxá sem avisar. Na Vercel isso não acontece, porque o
+build com Root Directory `agenda` instala isolado. Se o comportamento local
+divergir do deploy, é o primeiro lugar pra olhar; `cd agenda && npm ci` resolve.
+
 Os dois se ligam por link, não por código: `VITE_AGENDA_APP_URL` acende o
 atalho "Ir para a Agenda" no menu daqui, e `VITE_ALMOXA_APP_URL`, lá, acende o
 caminho de volta. Vazias, os atalhos somem. Apontando para o mesmo projeto

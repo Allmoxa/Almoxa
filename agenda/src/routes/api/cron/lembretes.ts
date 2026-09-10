@@ -1,17 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { deveEnviarAgora, tetoDaConsultaMs } from "@/lib/lembretes";
 
 /**
  * Disparo dos lembretes por e-mail.
  *
- * Chamada pelo Vercel Cron a cada 15 minutos (ver `crons` no vercel.json).
- * Cada prestador escolhe a antecedência (`reminder_hours`), então a rota
- * carrega a janela maior possível de uma vez e filtra por prestador aqui em
- * cima — uma consulta em vez de uma por conta.
+ * Chamada pelo Vercel Cron (ver `crons` no vercel.json). Cada prestador
+ * escolhe a antecedência (`reminder_hours`), então a rota carrega a janela
+ * maior possível de uma vez e filtra por prestador aqui em cima — uma consulta
+ * em vez de uma por conta.
+ *
+ * A rota não sabe de quanto em quanto tempo é chamada, e precisa saber: é isso
+ * que decide se dá pra deixar um lembrete "pra próxima passada". Daí a
+ * constante abaixo, que tem de acompanhar o vercel.json.
  *
  * `reminder_sent_at` é o que garante envio único. Ele é gravado por
  * agendamento, logo depois do envio daquele: se a função morrer no meio da
  * lista, quem já recebeu não recebe de novo na próxima passada.
  */
+/**
+ * De quanto em quanto tempo o cron chama esta rota, em minutos.
+ *
+ * O plano Hobby da Vercel só aceita cron diário — uma expressão de 15 em 15
+ * minutos é recusada no deploy —, por isso 1440. Num plano que permita
+ * mais, ou com o pg_cron do Supabase chamando a rota (ver README), baixe este
+ * número junto com o `schedule` do vercel.json: os dois descrevem a mesma
+ * coisa e mentir aqui é o que faz lembrete chegar atrasado.
+ */
+const INTERVALO_DO_CRON_MINUTOS = 1440;
+
 export const Route = createFileRoute("/api/cron/lembretes")({
   server: {
     handlers: {
@@ -34,8 +50,9 @@ export const Route = createFileRoute("/api/cron/lembretes")({
         const { emailDeLembrete, enviarEmail } = await import("@/lib/email.server");
 
         const agora = new Date();
-        // 168h é o teto de reminder_hours no banco (CHECK da migration).
-        const tetoDaJanela = new Date(agora.getTime() + 168 * 60 * 60 * 1000);
+        const tetoDaJanela = new Date(
+          agora.getTime() + tetoDaConsultaMs(INTERVALO_DO_CRON_MINUTOS),
+        );
 
         const { data: linhas, error } = await supabaseAdmin
           .from("appointments")
@@ -49,9 +66,12 @@ export const Route = createFileRoute("/api/cron/lembretes")({
           .gt("starts_at", agora.toISOString())
           .lte("starts_at", tetoDaJanela.toISOString())
           .order("starts_at")
-          // Teto por execução: o cron roda de 15 em 15 minutos, então a fila
-          // drena rápido, e um pico não estoura o tempo limite da função.
-          .limit(100);
+          // Teto por execução, pra um pico não estourar o tempo limite da
+          // função. Com cron diário não há "próxima passada em 15 minutos" pra
+          // drenar a sobra: o que passar deste teto só sai amanhã. 300 cobre
+          // com folga um dia de agenda cheia; se um dia não cobrir, o caminho é
+          // aumentar a frequência do cron, não este número.
+          .limit(300);
 
         if (error) {
           console.error("[agenda] falha ao listar lembretes:", error);
@@ -74,16 +94,10 @@ export const Route = createFileRoute("/api/cron/lembretes")({
             continue;
           }
 
-          // reminder_hours = 0 desliga o lembrete daquele prestador.
-          if (prestador.reminder_hours <= 0) {
-            pulados++;
-            continue;
-          }
-
+          // Regra e justificativa em src/lib/lembretes.ts, com os testes que
+          // provam que nenhum agendamento fica sem aviso.
           const faltam = new Date(linha.starts_at).getTime() - agora.getTime();
-          const janela = prestador.reminder_hours * 60 * 60 * 1000;
-          // Ainda longe demais: fica pra uma passada futura do cron.
-          if (faltam > janela) {
+          if (!deveEnviarAgora(faltam, prestador.reminder_hours, INTERVALO_DO_CRON_MINUTOS)) {
             pulados++;
             continue;
           }
