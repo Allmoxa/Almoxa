@@ -12,6 +12,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { uidDoAgendamento } from "@/agenda/lib/booking.functions";
+// Só o tipo: `import type` é apagado na compilação, então o módulo .server em
+// si não entra no bundle do navegador por causa desta linha.
+import type { BasePublica } from "@/agenda/lib/url.server";
 
 class ErroDeAgenda extends Error {}
 
@@ -117,11 +120,18 @@ export const girarTokenDoCalendario = createServerFn({ method: "POST" })
     return { calendarToken: data.calendar_token };
   });
 
-/** Endereço público da agenda, pro prestador copiar e mandar pro cliente. */
+/**
+ * Endereço público da agenda, pro prestador copiar e mandar pro cliente.
+ *
+ * Devolve também de onde a raiz saiu. É a mesma que entra nos e-mails, e a
+ * tela precisa saber se ela veio de um domínio configurado, do domínio de
+ * produção do projeto ou de um deploy de branch — só o último caso é um link
+ * que não se deve compartilhar.
+ */
 export const lerUrlPublica = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ base: string }> => {
-    const { urlPublica } = await import("@/agenda/lib/url.server");
-    return { base: urlPublica() };
+  async (): Promise<BasePublica> => {
+    const { basePublica } = await import("@/agenda/lib/url.server");
+    return basePublica();
   },
 );
 

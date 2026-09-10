@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { useProvider } from "@/agenda/hooks/use-provider";
 import { supabase } from "@/integrations/supabase/client";
 import type { Provider } from "@/integrations/supabase/types";
+import type { BasePublica } from "@/agenda/lib/url.server";
 import { girarTokenDoCalendario, lerUrlPublica } from "@/agenda/lib/provider.functions";
 import {
   formatarTelefone,
@@ -62,21 +63,14 @@ function PaginaDoLink() {
     );
   }
 
-  // O endereço que o prestador copia sai do próprio navegador dele: é o
-  // domínio por onde ele entrou, e não depende de ninguém ter cadastrado
-  // AGENDA_PUBLIC_URL no deploy. Era isso que fazia esta tela oferecer
-  // "https://<seu-dominio>/a/..." — o valor de exemplo, copiado tal e qual
-  // pras variáveis de ambiente — como se fosse um link de verdade.
-  const raiz = typeof window === "undefined" ? (base.data?.base ?? "") : window.location.origin;
+  // A raiz vem do servidor, e não de window.location.origin: num deploy de
+  // branch a origem do navegador é o endereço daquela build
+  // (almoxa-git-agenda-….vercel.app), que morre com a branch. O link que o
+  // prestador copia e o que sai nos e-mails têm de ser o mesmo, e têm de ser
+  // o endereço estável do projeto.
+  const raiz = base.data?.base ?? "";
   const linkPublico = `${raiz}/a/${provider.data.slug}`;
   const feed = `${raiz}/api/calendario/${provider.data.calendar_token}.ics`;
-
-  // A variável do servidor continua mandando nos e-mails, onde não existe
-  // navegador pra perguntar. Quando as duas discordam, quem recebe confirmação
-  // e lembrete é que leva o link quebrado — e é o único lugar onde isso dá pra
-  // perceber antes de um cliente reclamar.
-  const baseDosEmails = base.data?.base ?? "";
-  const emailsComLinkErrado = baseDosEmails !== "" && baseDosEmails !== raiz;
 
   return (
     <AppShell
@@ -97,7 +91,7 @@ function PaginaDoLink() {
           aceitando={provider.data.accepting}
           onMudou={() => void queryClient.invalidateQueries({ queryKey: ["provider"] })}
         />
-        {emailsComLinkErrado ? <AvisoDeUrlDosEmails configurada={baseDosEmails} correta={raiz} /> : null}
+        {base.data ? <OrigemDoEndereco info={base.data} /> : null}
         <Sincronizacao feed={feed} />
       </div>
     </AppShell>
@@ -260,30 +254,61 @@ function ComoVoceAparece({ provider, onMudou }: { provider: Provider; onMudou: (
 }
 
 /**
- * O link desta tela está certo, mas o dos e-mails não.
+ * De onde veio o endereço acima — e o que fazer pra trocá-lo.
  *
- * Os dois saem de fontes diferentes: o de cima, do navegador; o dos e-mails,
- * de `AGENDA_PUBLIC_URL`, porque cron e confirmação rodam sem ninguém olhando.
- * Quando a variável está errada ou ficou com o valor de exemplo, todo link de
- * confirmação, lembrete e cancelamento sai quebrado — e ninguém descobre, já
- * que quem recebe é o cliente, não o prestador.
+ * O prestador não tem como saber que este link sai de uma variável de
+ * ambiente, nem que é o mesmo que vai nos e-mails de confirmação. Quando a
+ * raiz é a certa, isto é uma linha discreta dizendo como personalizar; quando
+ * não é, é o único aviso que existe — quem recebe link quebrado é o cliente,
+ * e ele não tem a quem reclamar além do prestador.
  */
-function AvisoDeUrlDosEmails({ configurada, correta }: { configurada: string; correta: string }) {
-  return (
-    <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-      <p className="text-sm font-medium">Os e-mails estão saindo com link errado</p>
-      <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-        A confirmação e o lembrete apontam para{" "}
-        <code className="font-mono text-xs">{configurada}</code>, que não é o
-        endereço deste site. Quem receber não consegue abrir nem desmarcar.
-      </p>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        Corrija a variável <code className="font-mono text-xs">AGENDA_PUBLIC_URL</code> para{" "}
-        <code className="font-mono text-xs">{correta}</code> nas variáveis de
-        ambiente do deploy e publique de novo.
-      </p>
-    </div>
+function OrigemDoEndereco({ info }: { info: BasePublica }) {
+  const comoTrocar = (
+    <>
+      Para usar um domínio próprio, aponte-o para este projeto e defina{" "}
+      <code className="font-mono text-xs">AGENDA_PUBLIC_URL</code> nas variáveis de ambiente do
+      deploy.
+    </>
   );
+
+  if (info.recusada) {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+        <p className="text-sm font-medium">O domínio configurado foi ignorado</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          <code className="font-mono text-xs">AGENDA_PUBLIC_URL</code> está com{" "}
+          <code className="font-mono text-xs">{info.recusada}</code>, que não é um endereço válido.
+          Os links seguem usando <code className="font-mono text-xs">{info.base}</code>. Corrija a
+          variável, ou apague-a para ficar com o padrão.
+        </p>
+      </div>
+    );
+  }
+
+  if (info.origem === "deploy" || info.origem === "local") {
+    return (
+      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+        <p className="text-sm font-medium">Este endereço não serve para compartilhar</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          {info.origem === "local"
+            ? "O site está rodando na sua máquina, então o link só abre nela."
+            : "Este é o endereço temporário de uma pré-visualização: ele sai do ar junto com a branch, e o link que você mandar para o cliente morre junto."}{" "}
+          {comoTrocar}
+        </p>
+      </div>
+    );
+  }
+
+  if (info.origem === "producao") {
+    return (
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Este é o endereço padrão do projeto, e é o mesmo que vai nos e-mails de confirmação.{" "}
+        {comoTrocar}
+      </p>
+    );
+  }
+
+  return null;
 }
 
 function LinkPublico({

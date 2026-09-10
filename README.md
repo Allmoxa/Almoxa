@@ -41,9 +41,19 @@ GEMINI_API_KEY=
 # Almoxá Agenda (mesmo app, rotas /agenda e /a/<slug>)
 RESEND_API_KEY=
 AGENDA_EMAIL_FROM=
-AGENDA_PUBLIC_URL=
+AGENDA_PUBLIC_URL=   # opcional, ver abaixo
 CRON_SECRET=
 ```
+
+`AGENDA_PUBLIC_URL` é a raiz de todo link que a Agenda emite — o do e-mail de
+confirmação, o do lembrete e o que a tela "Seu link" manda copiar. Preencha só
+para usar um domínio próprio: vazia, o app cai sozinho no domínio de produção
+do projeto na Vercel, que continua valendo quando o código roda num deploy de
+branch — o endereço daquela build morre com ela, e um link desses na mão de um
+cliente para de abrir sem aviso. Valor que não seja endereço de verdade é
+recusado, registrado no log e sinalizado na tela do prestador; o cabeçalho
+`Host` não entra nessa conta, porque quem escolhe o `Host` é quem chama, e um
+forjado mandaria o cliente para outro lugar a partir de um e-mail legítimo.
 
 ## 📁 Estrutura
 
