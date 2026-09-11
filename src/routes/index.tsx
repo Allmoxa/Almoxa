@@ -74,7 +74,7 @@ function Landing() {
   }, [navigate]);
 
   return (
-    <div id="inicio" className="paper-texture-bg min-h-screen overflow-x-clip bg-background">
+    <div id="inicio" className="min-h-screen overflow-x-clip bg-background">
       <SmoothScroll />
       <AosInit />
       <RevealSafetyNet />
