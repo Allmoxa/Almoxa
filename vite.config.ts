@@ -20,7 +20,14 @@ export default defineConfig(({ command }) => ({
         },
       },
     }),
-    ...(command === "build" ? [nitro({ preset: "vercel" })] : []),
+    ...(command === "build"
+      ? [
+          nitro({
+            preset: "vercel",
+            vercel: { functions: { maxDuration: 60 } },
+          }),
+        ]
+      : []),
     viteReact(),
   ],
   resolve: {
