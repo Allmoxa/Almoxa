@@ -287,12 +287,13 @@ function OrigemDoEndereco({ info }: { info: BasePublica }) {
 
   if (info.origem === "deploy" || info.origem === "local") {
     return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-        <p className="text-sm font-medium">Este endereço não serve para compartilhar</p>
+      <div className="rounded-md border border-border-strong bg-muted/40 p-4">
+        <p className="text-sm font-medium">Este endereço é só para teste</p>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           {info.origem === "local"
             ? "O site está rodando na sua máquina, então o link só abre nela."
-            : "Este é o endereço temporário de uma pré-visualização: ele sai do ar junto com a branch, e o link que você mandar para o cliente morre junto."}{" "}
+            : "Esta é uma pré-visualização: o link abre esta versão, e não a que está no ar para os clientes. É de propósito — é o que permite conferir aqui uma mudança antes de publicá-la."}{" "}
+          Em produção o endereço passa a ser o do projeto, sem você fazer nada.{" "}
           {comoTrocar}
         </p>
       </div>

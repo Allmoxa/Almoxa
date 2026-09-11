@@ -9,13 +9,18 @@
  *
  *   1. AGENDA_PUBLIC_URL, quando for um endereço de verdade. É o domínio
  *      próprio, e é o que torna a URL inteiramente personalizável.
- *   2. o domínio de produção do projeto na Vercel (almoxa.vercel.app), que a
- *      plataforma informa sozinha. É o padrão certo: funciona sem ninguém
- *      cadastrar nada, e continua valendo quando o código roda num deploy de
- *      branch — que tem endereço próprio, mas endereço que ninguém deve
- *      receber por e-mail nem colar no WhatsApp.
- *   3. o endereço deste deploy específico, pra pré-visualização isolada.
+ *   2. numa pré-visualização, o endereço da própria pré-visualização. Um
+ *      deploy de branch existe pra ser testado, e apontar pra produção fazia
+ *      o botão "Abrir" desta tela levar pro código antigo — a mudança que se
+ *      queria conferir ficava invisível, e parecia que ela não tinha subido.
+ *   3. o domínio de produção do projeto na Vercel (almoxa.vercel.app), que a
+ *      plataforma informa sozinha. É o padrão de produção: funciona sem
+ *      ninguém cadastrar nada.
  *   4. localhost, em desenvolvimento.
+ *
+ * O que separa 2 de 3 é VERCEL_ENV, posta pela plataforma: em produção ela
+ * vale "production", e nenhum endereço de branch pode vazar pro e-mail de um
+ * cliente de verdade.
  *
  * O passo 1 recusa o que não for URL. O modelo do .env traz um valor de
  * exemplo, e ele já foi parar em produção uma vez: os e-mails saíram apontando
@@ -55,13 +60,22 @@ export function basePublica(): BasePublica {
 
   if (configurada) return { base: configurada, origem: "configurada", recusada };
 
-  // Posta pela Vercel em todo deploy, inclusive nos de branch: é o domínio de
-  // produção do projeto, não o desta build.
+  // VERCEL_BRANCH_URL é o apelido estável da branch
+  // (almoxa-git-agenda-….vercel.app); VERCEL_URL é o da build, com hash. O
+  // primeiro é o que a pessoa já tem aberto quando está testando.
+  const preview = normalizarBase(
+    process.env["VERCEL_BRANCH_URL"] ?? process.env["VERCEL_URL"] ?? "",
+  );
+  if (process.env["VERCEL_ENV"] === "preview" && preview) {
+    return { base: preview, origem: "deploy", recusada };
+  }
+
+  // Posta pela Vercel em todo deploy: é o domínio de produção do projeto, não
+  // o desta build.
   const producao = normalizarBase(process.env["VERCEL_PROJECT_PRODUCTION_URL"] ?? "");
   if (producao) return { base: producao, origem: "producao", recusada };
 
-  const deploy = normalizarBase(process.env["VERCEL_URL"] ?? "");
-  if (deploy) return { base: deploy, origem: "deploy", recusada };
+  if (preview) return { base: preview, origem: "deploy", recusada };
 
   return { base: "http://localhost:8081", origem: "local", recusada };
 }

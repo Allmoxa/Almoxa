@@ -11,7 +11,9 @@ describe("basePublica", () => {
 
   beforeEach(() => {
     delete process.env["AGENDA_PUBLIC_URL"];
+    delete process.env["VERCEL_ENV"];
     delete process.env["VERCEL_PROJECT_PRODUCTION_URL"];
+    delete process.env["VERCEL_BRANCH_URL"];
     delete process.env["VERCEL_URL"];
   });
 
@@ -30,6 +32,38 @@ describe("basePublica", () => {
   it("aceita domínio sem protocolo, que é como se digita", () => {
     process.env["AGENDA_PUBLIC_URL"] = "almoxa.vercel.app";
     expect(basePublica().base).toBe("https://almoxa.vercel.app");
+  });
+
+  it("numa pré-visualização, aponta para ela mesma", () => {
+    // Senão o botão "Abrir" da tela do prestador leva pra produção, e a
+    // mudança que se queria testar na branch fica invisível.
+    process.env["VERCEL_ENV"] = "preview";
+    process.env["VERCEL_BRANCH_URL"] = "almoxa-git-agenda-allmoxas-projects.vercel.app";
+    process.env["VERCEL_PROJECT_PRODUCTION_URL"] = "almoxa.vercel.app";
+
+    expect(basePublica()).toMatchObject({
+      base: "https://almoxa-git-agenda-allmoxas-projects.vercel.app",
+      origem: "deploy",
+    });
+  });
+
+  it("em produção, endereço de branch nenhum vaza pro e-mail do cliente", () => {
+    process.env["VERCEL_ENV"] = "production";
+    process.env["VERCEL_BRANCH_URL"] = "almoxa-git-agenda-allmoxas-projects.vercel.app";
+    process.env["VERCEL_PROJECT_PRODUCTION_URL"] = "almoxa.vercel.app";
+
+    expect(basePublica()).toMatchObject({
+      base: "https://almoxa.vercel.app",
+      origem: "producao",
+    });
+  });
+
+  it("o domínio próprio vence até numa pré-visualização", () => {
+    process.env["VERCEL_ENV"] = "preview";
+    process.env["VERCEL_BRANCH_URL"] = "almoxa-git-agenda-allmoxas-projects.vercel.app";
+    process.env["AGENDA_PUBLIC_URL"] = "https://agenda.salaodoze.com.br";
+
+    expect(basePublica().origem).toBe("configurada");
   });
 
   it("cai no domínio de produção do projeto quando nada foi configurado", () => {
