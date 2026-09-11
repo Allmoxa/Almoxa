@@ -73,8 +73,21 @@ export function ProductPicker({ products, value, onChange, fallbackLabel, classN
     const input = inputRef.current;
     if (!input) return;
     const rect = input.getBoundingClientRect();
-    const below = window.innerHeight - rect.bottom - GAP;
-    const above = rect.top - GAP;
+
+    // O teclado virtual encolhe o viewport visual, não o da página: no celular
+    // window.innerHeight continua contando a faixa que o teclado cobre. A conta
+    // antiga achava espaço de sobra embaixo do campo e punha a lista lá — atrás
+    // do teclado, fora da vista. Quem digitava via o campo responder e nenhuma
+    // opção aparecer.
+    //
+    // Só o espaço disponível muda de régua. `top`/`bottom` continuam em
+    // coordenada de página, que é a que `position: fixed` usa.
+    const visual = window.visualViewport;
+    const alturaVisivel = visual?.height ?? window.innerHeight;
+    const topoVisivel = visual?.offsetTop ?? 0;
+
+    const below = topoVisivel + alturaVisivel - rect.bottom - GAP;
+    const above = rect.top - topoVisivel - GAP;
     const flip = below < Math.min(MAX_LIST, above);
     setAnchor({
       left: rect.left,
@@ -92,9 +105,17 @@ export function ProductPicker({ products, value, onChange, fallbackLabel, classN
     // capture: pega também o scroll de containers internos, não só o da janela.
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
+    // Abrir o teclado no iOS não dispara resize na janela — só no viewport
+    // visual. Sem estes dois, a lista continuaria medida pela tela inteira até
+    // a pessoa rolar a página.
+    const visual = window.visualViewport;
+    visual?.addEventListener("resize", measure);
+    visual?.addEventListener("scroll", measure);
     return () => {
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
+      visual?.removeEventListener("resize", measure);
+      visual?.removeEventListener("scroll", measure);
     };
   }, [open, measure]);
 
@@ -210,11 +231,23 @@ export function ProductPicker({ products, value, onChange, fallbackLabel, classN
                     >
                       <button
                         type="button"
-                        // Escolher no mousedown, antes do blur do input fechar a lista.
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          choose(product);
-                        }}
+                        // No clique, e não no mousedown. O mousedown em aparelho
+                        // de toque é evento de compatibilidade: o navegador só o
+                        // emite depois do dedo levantar, e desiste dele se o
+                        // toque andou alguns pixels — o que todo dedo faz. Era
+                        // isso que tornava impossível escolher produto no
+                        // celular: a lista abria, o item acendia, e o toque não
+                        // virava escolha.
+                        //
+                        // O motivo de estar no mousedown era chegar antes do
+                        // blur do input; mas blur nenhum fecha esta lista (quem
+                        // fecha é o pointerdown lá em cima, que trata o portal
+                        // como parte de dentro), então o clique chega a tempo.
+                        //
+                        // Escolher no pointerdown resolveria o toque e criaria
+                        // outro problema: arrastar o dedo para rolar a lista
+                        // selecionaria o item onde ele encostou.
+                        onClick={() => choose(product)}
                         onMouseEnter={() => setActive(index)}
                         className={`flex w-full items-baseline justify-between gap-3 px-3 py-2 text-left text-sm transition-colors ${
                           index === active ? "bg-secondary" : ""

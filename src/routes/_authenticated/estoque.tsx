@@ -45,12 +45,33 @@ export const Route = createFileRoute("/_authenticated/estoque")({
   component: EstoquePage,
 });
 
+/**
+ * Número digitado à brasileira: "12,50" vale tanto quanto "12.50".
+ *
+ * Os campos eram `type="number"`, e num teclado pt-BR do celular a tecla
+ * decimal é a vírgula. O navegador considera "12,50" inválido nesse tipo de
+ * campo e devolve string vazia — sem aviso nenhum, nem na tela nem no envio.
+ * O produto era criado com preço e quantidade zerados, e quem estava no
+ * celular via o cadastro "não funcionar".
+ *
+ * O resto do app (edição de produto, movimentação, receita, venda) já aceitava
+ * vírgula; este formulário era o único que não.
+ */
+const numeroBr = (max: number) =>
+  z.preprocess(
+    (valor) => (typeof valor === "string" ? valor.trim().replace(",", ".") : valor),
+    z.coerce
+      .number({ message: "Use um número, como 12,50" })
+      .min(0, { message: "Não pode ser negativo" })
+      .max(max, { message: "Valor alto demais" }),
+  );
+
 const productSchema = z.object({
   name: z.string().trim().min(1, { message: "Informe o nome" }).max(200),
   sku: z.string().trim().max(80),
-  purchase_price: z.coerce.number().min(0).max(10_000_000),
-  sale_price: z.coerce.number().min(0).max(10_000_000),
-  quantity: z.coerce.number().min(0).max(1_000_000),
+  purchase_price: numeroBr(10_000_000),
+  sale_price: numeroBr(10_000_000),
+  quantity: numeroBr(1_000_000),
 });
 
 const inputClass =
@@ -425,8 +446,8 @@ function EstoqueDono() {
                 <input
                   id="purchase_price"
                   name="purchase_price"
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue="0"
                   className={`mt-2 ${inputClass}`}
                 />
@@ -438,8 +459,8 @@ function EstoqueDono() {
                 <input
                   id="sale_price"
                   name="sale_price"
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue="0"
                   className={`mt-2 ${inputClass}`}
                 />
@@ -451,8 +472,8 @@ function EstoqueDono() {
                 <input
                   id="quantity"
                   name="quantity"
-                  type="number"
-                  step="1"
+                  type="text"
+                  inputMode="decimal"
                   defaultValue="0"
                   disabled={businessType === "comida"}
                   className={`mt-2 ${inputClass} disabled:opacity-60`}

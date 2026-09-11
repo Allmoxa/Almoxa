@@ -93,53 +93,16 @@ export const extractProducts = createServerFn({ method: "POST" })
         ? "Esta é uma foto de produto(s) ou de uma etiqueta. Identifique o produto, código e quantidade visível."
         : "Este é um documento de compra (nota fiscal, pedido ou recibo). Liste todos os itens comprados.";
 
-    const content: unknown[] = [{ type: "text", text: instruction }];
-    for (const file of data.files) {
-      if (file.mimeType.startsWith("image/")) {
-        content.push({ type: "image_url", image_url: { url: file.dataUrl } });
-      } else {
-        content.push({
-          type: "file",
-          file: { filename: file.name, file_data: file.dataUrl },
-        });
-      }
-    }
+    const { chamarGemini, conteudoDaLeitura } = await import("@/lib/gemini.server");
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-3.6-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content },
-          ],
-          tools: [extractionTool],
-          tool_choice: { type: "function", function: { name: "registrar_produtos" } },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const detail = await response.text();
-      console.error("Gemini API error", response.status, detail);
-      if (response.status === 429)
-        throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
-      if (response.status === 403)
-        throw new Error("Chave da API do Gemini inválida ou sem permissão.");
-      throw new Error("Não consegui ler este arquivo. Tente uma foto mais nítida.");
-    }
-
-    const payload = (await response.json()) as {
-      choices?: { message?: { tool_calls?: { function?: { arguments?: string } }[] } }[];
-    };
-    const raw = payload.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!raw) throw new Error("Nenhum produto foi identificado.");
+    const raw = await chamarGemini({
+      apiKey,
+      systemPrompt: SYSTEM_PROMPT,
+      content: conteudoDaLeitura(instruction, data.files),
+      tool: extractionTool,
+      toolName: "registrar_produtos",
+      erroDeLeitura: "Não consegui ler este arquivo. Tente uma foto mais nítida.",
+    });
 
     const parsed = z
       .object({

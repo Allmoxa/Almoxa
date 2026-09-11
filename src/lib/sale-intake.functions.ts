@@ -93,55 +93,19 @@ export const extractSale = createServerFn({ method: "POST" })
     const apiKey = process.env["GEMINI_API_KEY"];
     if (!apiKey) throw new Error("Serviço de leitura indisponível.");
 
-    const content: unknown[] = [
-      {
-        type: "text",
-        text: "Esta é uma notinha, cupom ou recibo de venda. Liste todos os itens vendidos e o total cobrado.",
-      },
-    ];
-    for (const file of data.files) {
-      if (file.mimeType.startsWith("image/")) {
-        content.push({ type: "image_url", image_url: { url: file.dataUrl } });
-      } else {
-        content.push({ type: "file", file: { filename: file.name, file_data: file.dataUrl } });
-      }
-    }
+    const { chamarGemini, conteudoDaLeitura } = await import("@/lib/gemini.server");
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gemini-3.6-flash",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content },
-          ],
-          tools: [extractionTool],
-          tool_choice: { type: "function", function: { name: "registrar_venda" } },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const detail = await response.text();
-      console.error("Gemini API error", response.status, detail);
-      if (response.status === 429)
-        throw new Error("Muitas leituras seguidas. Tente novamente em instantes.");
-      if (response.status === 403)
-        throw new Error("Chave da API do Gemini inválida ou sem permissão.");
-      throw new Error("Não consegui ler esta notinha. Tente uma foto mais nítida.");
-    }
-
-    const payload = (await response.json()) as {
-      choices?: { message?: { tool_calls?: { function?: { arguments?: string } }[] } }[];
-    };
-    const raw = payload.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!raw) throw new Error("Nenhum item foi identificado.");
+    const raw = await chamarGemini({
+      apiKey,
+      systemPrompt: SYSTEM_PROMPT,
+      content: conteudoDaLeitura(
+        "Esta é uma notinha, cupom ou recibo de venda. Liste todos os itens vendidos e o total cobrado.",
+        data.files,
+      ),
+      tool: extractionTool,
+      toolName: "registrar_venda",
+      erroDeLeitura: "Não consegui ler esta notinha. Tente uma foto mais nítida.",
+    });
 
     const parsed = z
       .object({
